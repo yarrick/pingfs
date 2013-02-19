@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/icmp6.h>
 
 #include "icmp.h"
 
@@ -36,11 +37,17 @@ static void write16(uint8_t *data, uint16_t s)
 static uint8_t *icmp_encode(struct icmp_packet *pkt, int *len)
 {
 	uint8_t *data;
+	struct sockaddr_in *sockaddr = (struct sockaddr_in *) &pkt->peer;
 	*len = ICMP_MIN_LENGTH + pkt->payload_len;
 	data = malloc(*len);
 	bzero(data, *len);
 
-	data[0] = pkt->type;
+	if (sockaddr->sin_family == AF_INET) {
+		data[0] = pkt->type;
+	} else {
+		if (ICMP_IS_REQUEST(pkt)) data[0] = 128;
+		if (ICMP_IS_REPLY(pkt)) data[0] = 129;
+	}
 	data[1] = pkt->code;
 
 	write16(&data[4], pkt->id);
@@ -48,7 +55,10 @@ static uint8_t *icmp_encode(struct icmp_packet *pkt, int *len)
 	if (pkt->payload_len)
 		memcpy(&data[8], pkt->payload, pkt->payload_len);
 
-	write16(&data[2], checksum(data, *len));
+	if (sockaddr->sin_family == AF_INET) {
+		// Only fill in checksum for IPv4
+		write16(&data[2], checksum(data, *len));
+	}
 
 	return data;
 }
@@ -58,17 +68,19 @@ void icmp_send(int socket, struct icmp_packet *pkt)
 	int len;
 	uint8_t *icmpdata = icmp_encode(pkt, &len);
 
-	sendto(socket, icmpdata, len, 0, (struct sockaddr *) &pkt->peer, pkt->peer_len);
+	len = sendto(socket, icmpdata, len, 0, (struct sockaddr *) &pkt->peer, pkt->peer_len);
 
 	free(icmpdata);
 }
 
 int icmp_parse(struct icmp_packet *pkt, uint8_t *data, int len)
 {
-	uint16_t crc_calc, crc_recv;
+	struct sockaddr_in *sockaddr = (struct sockaddr_in *) &pkt->peer;
 
 	if (len < ICMP_MIN_LENGTH) return -1;
-	if (checksum(data, len) != 0) return -2;
+	if (sockaddr->sin_family == AF_INET) {
+		if (checksum(data, len) != 0) return -2;
+	}
 	pkt->type = data[0];
 	pkt->code = data[1];
 	pkt->id = read16(&data[4]);
@@ -105,6 +117,8 @@ static char *icmp_type_str(struct icmp_packet *pkt)
 {
 	if (ICMP_IS_REPLY(pkt)) return "Reply";
 	if (ICMP_IS_REQUEST(pkt)) return "Request";
+	if (pkt->type == ICMP6_ECHO_REPLY) return "Reply";
+	if (pkt->type == ICMP6_ECHO_REQUEST) return "Request";
 	return "Other";
 }
 
@@ -124,7 +138,6 @@ int open_raw_v4_socket()
 	return socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
 }
 
-#if 0
 // v6 socket will just give ICMPv6 data, no IP header
 int open_raw_v6_socket()
 {
@@ -137,13 +150,13 @@ int open_raw_v6_socket()
 	}
 	return sock;
 }
-#endif
 
 int main(void)
 {
 	uint8_t buf[2048];
 	struct icmp_packet pkt;
 	struct sockaddr_in *sockaddr = (struct sockaddr_in *) &pkt.peer;
+	struct sockaddr_in6 *sockaddr6 = (struct sockaddr_in6 *) &pkt.peer;
 	int fd = open_raw_v4_socket();
 	if (fd<0) {
 		perror("rawsock");
@@ -153,7 +166,7 @@ int main(void)
 	// send
 	sockaddr->sin_family = AF_INET;
 	sockaddr->sin_port = 0;
-	sockaddr->sin_addr.s_addr = inet_addr("194.47.250.235");
+	sockaddr->sin_addr.s_addr = inet_addr("173.194.32.2"); //google.com
 	pkt.peer_len = sizeof(struct sockaddr_in);
 	pkt.type = ICMP_REQUEST_TYPE;
 	pkt.code = 0;
@@ -175,6 +188,32 @@ int main(void)
 		free(pkt.payload);
 	}
 
+	fd = open_raw_v6_socket();
+
+	// send v6
+	sockaddr6->sin6_family = AF_INET6;
+	sockaddr6->sin6_port = 0;
+	inet_pton(AF_INET6, "2a00:1450:400f:800::1001", &sockaddr6->sin6_addr); // google.com
+	pkt.peer_len = sizeof(struct sockaddr_in6);
+	pkt.type = ICMP_REQUEST_TYPE;
+	pkt.code = 0;
+	pkt.id = 0xFAFE;
+	pkt.seqno = 123;
+	pkt.payload = strdup("Foo123");
+	pkt.payload_len = 7;
+
+	icmp_send(fd, &pkt);
+	free(pkt.payload);
+
+	// recv v6
+	pkt.peer_len = sizeof(pkt.peer);
+	i = recvfrom(fd, buf, 1024, 0, (struct sockaddr *) &pkt.peer, &pkt.peer_len);
+	if (i > 0) {
+		int d = icmp_parse(&pkt, buf, i);
+		printf("parse res=%d\n", d);
+		icmp_dump(&pkt);
+		free(pkt.payload);
+	}
 	return 0;
 }
 
