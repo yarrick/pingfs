@@ -34,28 +34,28 @@ static void write16(uint8_t *data, uint16_t s)
 	data[1] = s & 0xFF;
 }
 
+static uint8_t icmp_type(struct icmp_packet *pkt)
+{
+	if (ICMP_IPPROTO(pkt) == AF_INET) return pkt->type;
+	if (pkt->type == ICMP_REQUEST) return ICMP6_ECHO_REQUEST;
+	return ICMP6_ECHO_REPLY;
+}
+
 static uint8_t *icmp_encode(struct icmp_packet *pkt, int *len)
 {
 	uint8_t *data;
-	struct sockaddr_in *sockaddr = (struct sockaddr_in *) &pkt->peer;
 	*len = ICMP_MIN_LENGTH + pkt->payload_len;
 	data = malloc(*len);
 	bzero(data, *len);
 
-	if (sockaddr->sin_family == AF_INET) {
-		data[0] = pkt->type;
-	} else {
-		if (ICMP_IS_REQUEST(pkt)) data[0] = 128;
-		if (ICMP_IS_REPLY(pkt)) data[0] = 129;
-	}
-	data[1] = pkt->code;
+	data[0] = icmp_type(pkt);
 
 	write16(&data[4], pkt->id);
 	write16(&data[6], pkt->seqno);
 	if (pkt->payload_len)
 		memcpy(&data[8], pkt->payload, pkt->payload_len);
 
-	if (sockaddr->sin_family == AF_INET) {
+	if (ICMP_IPPROTO(pkt) == AF_INET) {
 		// Only fill in checksum for IPv4
 		write16(&data[2], checksum(data, *len));
 	}
@@ -75,14 +75,11 @@ void icmp_send(int socket, struct icmp_packet *pkt)
 
 int icmp_parse(struct icmp_packet *pkt, uint8_t *data, int len)
 {
-	struct sockaddr_in *sockaddr = (struct sockaddr_in *) &pkt->peer;
-
 	if (len < ICMP_MIN_LENGTH) return -1;
-	if (sockaddr->sin_family == AF_INET) {
+	if (ICMP_IPPROTO(pkt) == AF_INET) {
 		if (checksum(data, len) != 0) return -2;
 	}
 	pkt->type = data[0];
-	pkt->code = data[1];
 	pkt->id = read16(&data[4]);
 	pkt->seqno = read16(&data[6]);
 	pkt->payload_len = len - ICMP_MIN_LENGTH;
@@ -115,10 +112,8 @@ static void *get_in_addr(struct sockaddr_storage *ss)
 
 static char *icmp_type_str(struct icmp_packet *pkt)
 {
-	if (ICMP_IS_REPLY(pkt)) return "Reply";
-	if (ICMP_IS_REQUEST(pkt)) return "Request";
-	if (pkt->type == ICMP6_ECHO_REPLY) return "Reply";
-	if (pkt->type == ICMP6_ECHO_REQUEST) return "Request";
+	if (pkt->type == ICMP_REPLY) return "Reply";
+	if (pkt->type == ICMP_REQUEST) return "Request";
 	return "Other";
 }
 
@@ -168,8 +163,7 @@ int main(void)
 	sockaddr->sin_port = 0;
 	sockaddr->sin_addr.s_addr = inet_addr("173.194.32.2"); //google.com
 	pkt.peer_len = sizeof(struct sockaddr_in);
-	pkt.type = ICMP_REQUEST_TYPE;
-	pkt.code = 0;
+	pkt.type = ICMP_REQUEST;
 	pkt.id = 0xFAFE;
 	pkt.seqno = 123;
 	pkt.payload = strdup("Foo123");
@@ -195,8 +189,7 @@ int main(void)
 	sockaddr6->sin6_port = 0;
 	inet_pton(AF_INET6, "2a00:1450:400f:800::1001", &sockaddr6->sin6_addr); // google.com
 	pkt.peer_len = sizeof(struct sockaddr_in6);
-	pkt.type = ICMP_REQUEST_TYPE;
-	pkt.code = 0;
+	pkt.type = ICMP_REQUEST;
 	pkt.id = 0xFAFE;
 	pkt.seqno = 123;
 	pkt.payload = strdup("Foo123");
@@ -216,6 +209,4 @@ int main(void)
 	}
 	return 0;
 }
-
-
 

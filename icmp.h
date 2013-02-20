@@ -1,22 +1,25 @@
 #ifndef __ICMP_H__
 #define __ICMP_H__
 
+#define ICMP4_ECHO_REPLY 0
+#define ICMP4_ECHO_REQUEST 8
+
+enum icmp_type {
+	ICMP_REQUEST = ICMP4_ECHO_REQUEST,
+	ICMP_REPLY = ICMP4_ECHO_REPLY,
+};
+
 struct icmp_packet {
 	struct sockaddr_storage peer;
 	int peer_len;
-	uint8_t type;
-	uint8_t code;
+	enum icmp_type type;
 	uint16_t id;
 	uint16_t seqno;
 	uint8_t *payload;
 	uint32_t payload_len;
 };
 
-#define ICMP_REPLY_TYPE 0
-#define ICMP_REQUEST_TYPE 8
-
-#define ICMP_IS_REPLY(x) ((x)->type == ICMP_REPLY_TYPE)
-#define ICMP_IS_REQUEST(x) ((x)->type == ICMP_REQUEST_TYPE)
+#define ICMP_IPPROTO(p) ((p)->peer.ss_family)
 
 #define ICMP_MIN_LENGTH 8
 
