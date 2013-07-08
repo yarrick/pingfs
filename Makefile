@@ -1,13 +1,13 @@
-all: pingfs
+all: pinger
 
-OBJS=icmp.o pingfs.o
+OBJS=icmp.o pinger.o
 
-pingfs: $(OBJS)
+pinger: $(OBJS)
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
 .c.o: $<
 	$(CC) -c $(CFLAGS) $< -o $@
 
 clean:
-	@rm -f *.o pingfs
+	@rm -f *.o pinger
 

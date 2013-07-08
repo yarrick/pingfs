@@ -115,7 +115,7 @@ int icmp_parse(struct icmp_packet *pkt, uint8_t *data, int len)
 	pkt->payload_len = len - ICMP_MINLEN;
 	if (pkt->payload_len) {
 		pkt->payload = malloc(pkt->payload_len);
-		memcpy(pkt->payload, &data[8], pkt->payload_len);
+		memcpy(pkt->payload, &data[ICMP_MINLEN], pkt->payload_len);
 	} else {
 		pkt->payload = NULL;
 	}
@@ -142,7 +142,7 @@ void icmp_dump(struct icmp_packet *pkt)
 {
 	char ipaddr[64];
 	bzero(ipaddr, sizeof(ipaddr));
-	inet_ntop(pkt->peer.ss_family, get_in_addr(&pkt->peer), ipaddr, pkt->peer_len);
+	inet_ntop(pkt->peer.ss_family, get_in_addr(&pkt->peer), ipaddr, sizeof(ipaddr));
 
 	printf("%s from %s, id %04X, seqno %04X, payload %d bytes\n",
 		icmp_type_str(pkt), ipaddr, pkt->id, pkt->seqno, pkt->payload_len);
