@@ -4,10 +4,34 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
+#include <netinet/ip_icmp.h>
 #include <netinet/icmp6.h>
 
 #include "icmp.h"
+
+#define ICMP_MIN_LENGTH 8
+
+struct icmp_rule {
+	int request_type;
+	int reply_type;
+	int use_checksum;
+	int strip_iphdr;
+};
+
+static const struct icmp_rule icmpv4 = {
+	.request_type = ICMP_ECHO,
+	.reply_type = ICMP_ECHOREPLY,
+	.use_checksum = 1,
+	.strip_iphdr = 1,
+};
+static const struct icmp_rule icmpv6 = {
+	.request_type = ICMP6_ECHO_REQUEST,
+	.reply_type = ICMP6_ECHO_REPLY,
+	.use_checksum = 0,
+	.strip_iphdr = 0,
+};
+
+#define GET_RULE(x) (((pkt)->peer.ss_family == AF_INET) ? &icmpv4 : &icmpv6 )
 
 static uint16_t checksum(uint8_t *data, uint32_t len)
 {
@@ -34,29 +58,26 @@ static void write16(uint8_t *data, uint16_t s)
 	data[1] = s & 0xFF;
 }
 
-static uint8_t icmp_type(struct icmp_packet *pkt)
-{
-	if (ICMP_IPPROTO(pkt) == AF_INET) return pkt->type;
-	if (pkt->type == ICMP_REQUEST) return ICMP6_ECHO_REQUEST;
-	return ICMP6_ECHO_REPLY;
-}
-
 static uint8_t *icmp_encode(struct icmp_packet *pkt, int *len)
 {
+	struct icmp_rule const *rule = GET_RULE(pkt);
 	uint8_t *data;
 	*len = ICMP_MIN_LENGTH + pkt->payload_len;
 	data = malloc(*len);
 	bzero(data, *len);
 
-	data[0] = icmp_type(pkt);
+	if (pkt->type == ICMP_REQUEST) {
+		data[0] = rule->request_type;
+	} else {
+		data[0] = rule->reply_type;
+	}
 
 	write16(&data[4], pkt->id);
 	write16(&data[6], pkt->seqno);
 	if (pkt->payload_len)
 		memcpy(&data[8], pkt->payload, pkt->payload_len);
 
-	if (ICMP_IPPROTO(pkt) == AF_INET) {
-		// Only fill in checksum for IPv4
+	if (rule->use_checksum) {
 		write16(&data[2], checksum(data, *len));
 	}
 
@@ -75,11 +96,26 @@ void icmp_send(int socket, struct icmp_packet *pkt)
 
 int icmp_parse(struct icmp_packet *pkt, uint8_t *data, int len)
 {
+	struct icmp_rule const *rule = GET_RULE(pkt);
+	if (rule->strip_iphdr) {
+		int hdrlen;
+		if (len == 0) return -3;
+		hdrlen = (data[0] & 0x0f) << 2;
+		if (len < hdrlen) return -4;
+		data += hdrlen;
+		len -= hdrlen;
+	}
 	if (len < ICMP_MIN_LENGTH) return -1;
-	if (ICMP_IPPROTO(pkt) == AF_INET) {
+	if (rule->use_checksum) {
 		if (checksum(data, len) != 0) return -2;
 	}
-	pkt->type = data[0];
+	if (rule->request_type == data[0]) {
+		pkt->type = ICMP_REQUEST;
+	} else if (rule->reply_type == data[0]) {
+		pkt->type = ICMP_REPLY;
+	} else {
+		return -5;
+	}
 	pkt->id = read16(&data[4]);
 	pkt->seqno = read16(&data[6]);
 	pkt->payload_len = len - ICMP_MIN_LENGTH;
@@ -90,15 +126,6 @@ int icmp_parse(struct icmp_packet *pkt, uint8_t *data, int len)
 		pkt->payload = NULL;
 	}
 	return 0;
-}
-
-int icmp_parse_v4(struct icmp_packet *pkt, uint8_t *data, int len)
-{
-	int hdrlen;
-	if (len == 0) return -1;
-	hdrlen = (data[0] & 0x0f) << 2;
-	if (len < hdrlen) return -2;
-	return icmp_parse(pkt, &data[hdrlen], len - hdrlen);
 }
 
 static void *get_in_addr(struct sockaddr_storage *ss)
@@ -174,9 +201,9 @@ int main(void)
 
 	// recv
 	pkt.peer_len = sizeof(pkt.peer);
-	int i = recvfrom(fd, buf, 1024, 0, (struct sockaddr *) &pkt.peer, &pkt.peer_len);
+	int i = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *) &pkt.peer, &pkt.peer_len);
 	if (i > 0) {
-		int d = icmp_parse_v4(&pkt, buf, i);
+		int d = icmp_parse(&pkt, buf, i);
 		printf("parse res=%d\n", d);
 		icmp_dump(&pkt);
 		free(pkt.payload);
@@ -200,7 +227,7 @@ int main(void)
 
 	// recv v6
 	pkt.peer_len = sizeof(pkt.peer);
-	i = recvfrom(fd, buf, 1024, 0, (struct sockaddr *) &pkt.peer, &pkt.peer_len);
+	i = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *) &pkt.peer, &pkt.peer_len);
 	if (i > 0) {
 		int d = icmp_parse(&pkt, buf, i);
 		printf("parse res=%d\n", d);
