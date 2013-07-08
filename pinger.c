@@ -89,8 +89,7 @@ int main(void)
 	}
 	sockv6 = open_icmpv6_socket();
 	if (sockv6<0) {
-		perror("Failed to open IPv6 socket");
-		exit(1);
+		perror("IPv6 not enabled");
 	}
 
 	printf("Type a hostname to ping it (^C to quit)\n");
@@ -105,14 +104,14 @@ int main(void)
 
 		FD_ZERO(&fds);
 		FD_SET(sockv4, &fds);
-		FD_SET(sockv6, &fds);
+		if (sockv6 > 0) FD_SET(sockv6, &fds);
 		FD_SET(STDIN_FILENO, &fds);
 
 		tv.tv_sec = 10;
 		tv.tv_usec = 0;
 		i = select(maxfd+1, &fds, NULL, NULL, &tv);
 		if (FD_ISSET(sockv4, &fds)) read_reply(sockv4);
-		if (FD_ISSET(sockv6, &fds)) read_reply(sockv6);
+		if ((sockv6 > 0) && FD_ISSET(sockv6, &fds)) read_reply(sockv6);
 		if (FD_ISSET(STDIN_FILENO, &fds)) {
 			uint8_t buf[BUFSIZ];
 			int k;
