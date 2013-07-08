@@ -9,8 +9,6 @@
 
 #include "icmp.h"
 
-#define ICMP_MIN_LENGTH 8
-
 struct icmp_rule {
 	int request_type;
 	int reply_type;
@@ -62,7 +60,7 @@ static uint8_t *icmp_encode(struct icmp_packet *pkt, int *len)
 {
 	struct icmp_rule const *rule = GET_RULE(pkt);
 	uint8_t *data;
-	*len = ICMP_MIN_LENGTH + pkt->payload_len;
+	*len = ICMP_MINLEN + pkt->payload_len;
 	data = malloc(*len);
 	bzero(data, *len);
 
@@ -105,7 +103,7 @@ int icmp_parse(struct icmp_packet *pkt, uint8_t *data, int len)
 		data += hdrlen;
 		len -= hdrlen;
 	}
-	if (len < ICMP_MIN_LENGTH) return -1;
+	if (len < ICMP_MINLEN) return -1;
 	if (rule->use_checksum) {
 		if (checksum(data, len) != 0) return -2;
 	}
@@ -118,7 +116,7 @@ int icmp_parse(struct icmp_packet *pkt, uint8_t *data, int len)
 	}
 	pkt->id = read16(&data[4]);
 	pkt->seqno = read16(&data[6]);
-	pkt->payload_len = len - ICMP_MIN_LENGTH;
+	pkt->payload_len = len - ICMP_MINLEN;
 	if (pkt->payload_len) {
 		pkt->payload = malloc(pkt->payload_len);
 		memcpy(pkt->payload, &data[8], pkt->payload_len);
