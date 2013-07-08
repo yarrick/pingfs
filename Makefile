@@ -1,9 +1,13 @@
-all: icmp
+all: pingfs
 
+OBJS=icmp.o pingfs.o
 
-icmp: icmp.c
-	gcc -o icmp icmp.c
+pingfs: $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+
+.c.o: $<
+	$(CC) -c $(CFLAGS) $< -o $@
 
 clean:
-	@rm -f icmp
+	@rm -f *.o pingfs
 

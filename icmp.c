@@ -1,9 +1,5 @@
-#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/icmp6.h>
 
@@ -29,7 +25,7 @@ static const struct icmp_rule icmpv6 = {
 	.strip_iphdr = 0,
 };
 
-#define GET_RULE(x) (((pkt)->peer.ss_family == AF_INET) ? &icmpv4 : &icmpv6 )
+#define GET_RULE(pkt) ((ICMP_ADDRFAMILY(pkt) == AF_INET) ? &icmpv4 : &icmpv6 )
 
 static uint16_t checksum(uint8_t *data, uint32_t len)
 {
@@ -153,13 +149,13 @@ void icmp_dump(struct icmp_packet *pkt)
 }
 
 // v4 socket will return full IP header
-int open_raw_v4_socket()
+int open_icmpv4_socket()
 {
 	return socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
 }
 
 // v6 socket will just give ICMPv6 data, no IP header
-int open_raw_v6_socket()
+int open_icmpv6_socket()
 {
 	int sock = socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 	if (sock >= 0) {
@@ -169,69 +165,5 @@ int open_raw_v6_socket()
 		setsockopt(sock, IPPROTO_ICMPV6, ICMP6_FILTER, &filter, sizeof(filter));
 	}
 	return sock;
-}
-
-int main(void)
-{
-	uint8_t buf[2048];
-	struct icmp_packet pkt;
-	struct sockaddr_in *sockaddr = (struct sockaddr_in *) &pkt.peer;
-	struct sockaddr_in6 *sockaddr6 = (struct sockaddr_in6 *) &pkt.peer;
-	int fd = open_raw_v4_socket();
-	if (fd<0) {
-		perror("rawsock");
-		exit(1);
-	}
-
-	// send
-	sockaddr->sin_family = AF_INET;
-	sockaddr->sin_port = 0;
-	sockaddr->sin_addr.s_addr = inet_addr("173.194.32.2"); //google.com
-	pkt.peer_len = sizeof(struct sockaddr_in);
-	pkt.type = ICMP_REQUEST;
-	pkt.id = 0xFAFE;
-	pkt.seqno = 123;
-	pkt.payload = strdup("Foo123");
-	pkt.payload_len = 7;
-
-	icmp_send(fd, &pkt);
-	free(pkt.payload);
-
-	// recv
-	pkt.peer_len = sizeof(pkt.peer);
-	int i = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *) &pkt.peer, &pkt.peer_len);
-	if (i > 0) {
-		int d = icmp_parse(&pkt, buf, i);
-		printf("parse res=%d\n", d);
-		icmp_dump(&pkt);
-		free(pkt.payload);
-	}
-
-	fd = open_raw_v6_socket();
-
-	// send v6
-	sockaddr6->sin6_family = AF_INET6;
-	sockaddr6->sin6_port = 0;
-	inet_pton(AF_INET6, "2a00:1450:400f:800::1001", &sockaddr6->sin6_addr); // google.com
-	pkt.peer_len = sizeof(struct sockaddr_in6);
-	pkt.type = ICMP_REQUEST;
-	pkt.id = 0xFAFE;
-	pkt.seqno = 123;
-	pkt.payload = strdup("Foo123");
-	pkt.payload_len = 7;
-
-	icmp_send(fd, &pkt);
-	free(pkt.payload);
-
-	// recv v6
-	pkt.peer_len = sizeof(pkt.peer);
-	i = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *) &pkt.peer, &pkt.peer_len);
-	if (i > 0) {
-		int d = icmp_parse(&pkt, buf, i);
-		printf("parse res=%d\n", d);
-		icmp_dump(&pkt);
-		free(pkt.payload);
-	}
-	return 0;
 }
 
