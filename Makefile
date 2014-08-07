@@ -7,7 +7,7 @@ pinger: $(OBJS) pinger.o
 	$(CC) $(OBJS) pinger.o -o $@ $(LDFLAGS)
 
 pingfs: pingfs.o
-	$(CC) pingfs.o -o $@ $(LDFLAGS)
+	$(CC) $(OBJS) pingfs.o -o $@ $(LDFLAGS)
 
 .c.o: $<
 	$(CC) -c $(CFLAGS) $< -o $@

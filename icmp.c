@@ -133,8 +133,8 @@ static void *get_in_addr(struct sockaddr_storage *ss)
 
 static char *icmp_type_str(struct icmp_packet *pkt)
 {
-	if (pkt->type == ICMP_REPLY) return "Reply";
-	if (pkt->type == ICMP_REQUEST) return "Request";
+	if (pkt->type == ICMP_REPLY) return "Reply from";
+	if (pkt->type == ICMP_REQUEST) return "Request to";
 	return "Other";
 }
 
@@ -144,7 +144,7 @@ void icmp_dump(struct icmp_packet *pkt)
 	bzero(ipaddr, sizeof(ipaddr));
 	inet_ntop(pkt->peer.ss_family, get_in_addr(&pkt->peer), ipaddr, sizeof(ipaddr));
 
-	printf("%s from %s, id %04X, seqno %04X, payload %d bytes\n",
+	printf("%s %s, id %04X, seqno %04X, payload %d bytes\n",
 		icmp_type_str(pkt), ipaddr, pkt->id, pkt->seqno, pkt->payload_len);
 }
 
