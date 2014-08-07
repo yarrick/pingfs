@@ -160,6 +160,19 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	sockv4 = open_icmpv4_socket();
+	if (sockv4 < 0) {
+		perror("Failed to open IPv4 socket");
+	}
+	sockv6 = open_icmpv6_socket();
+	if (sockv6 < 0) {
+		perror("Failed to open IPv6 socket");
+	}
+	if (sockv4 < 0 && sockv6 < 0) {
+		fprintf(stderr, "Failed to open any raw sockets! Exiting\n");
+		return EXIT_FAILURE;
+	}
+
 	fprintf(stderr, "Resolving %d hostnames... ", hostnames);
 	fflush(stderr);
 
@@ -223,19 +236,6 @@ int main(int argc, char **argv)
 	}
 	free(gais);
 	free(list);
-
-	sockv4 = open_icmpv4_socket();
-	if (sockv4 < 0) {
-		perror("Failed to open IPv4 socket");
-	}
-	sockv6 = open_icmpv6_socket();
-	if (sockv6 < 0) {
-		perror("Failed to open IPv6 socket");
-	}
-	if (sockv4 < 0 && sockv6 < 0) {
-		fprintf(stderr, "Failed to open any raw sockets! Exiting\n");
-		return EXIT_FAILURE;
-	}
 
 	evaluate_hosts(eval_hosts, hosts);
 
