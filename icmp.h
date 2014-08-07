@@ -14,7 +14,7 @@ enum icmp_type {
 
 struct icmp_packet {
 	struct sockaddr_storage peer;
-	int peer_len;
+	socklen_t peer_len;
 	enum icmp_type type;
 	uint16_t id;
 	uint16_t seqno;

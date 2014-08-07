@@ -9,7 +9,7 @@ struct host {
 	unsigned long tx_icmp;
 	unsigned long rx_icmp;
 	struct sockaddr_storage sockaddr;
-	size_t sockaddr_len;
+	socklen_t sockaddr_len;
 };
 
 struct eval_host {

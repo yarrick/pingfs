@@ -1,9 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <strings.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/icmp6.h>
+#include <arpa/inet.h>
 
 #include "icmp.h"
+
+#define ICMP_MINLEN 8
 
 struct icmp_rule {
 	int request_type;
@@ -57,8 +61,7 @@ static uint8_t *icmp_encode(struct icmp_packet *pkt, int *len)
 	struct icmp_rule const *rule = GET_RULE(pkt);
 	uint8_t *data;
 	*len = ICMP_MINLEN + pkt->payload_len;
-	data = malloc(*len);
-	bzero(data, *len);
+	data = calloc(1, *len);
 
 	if (pkt->type == ICMP_REQUEST) {
 		data[0] = rule->request_type;
