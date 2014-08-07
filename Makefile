@@ -1,11 +1,11 @@
 all: pingfs
 
 OBJS=icmp.o
-LDFLAGS = -lanl
+LDFLAGS=-lanl
 
-pingfs: $(OBJS) pingfs.o
+pingfs: $(OBJS)
 
-.PHONY = clean
+.PHONY = clean all
 clean:
 	@rm -f *.o pingfs
 
