@@ -135,7 +135,7 @@ static void evaluate_hosts(struct eval_host *evalhosts, int hosts)
 			if ((sockv6 > 0) && FD_ISSET(sockv6, &fds)) read_eval_reply(sockv6, evalhosts, hosts);
 		}
 	}
-	printf(" done\n");
+	printf(" done.\n");
 }
 
 int main(int argc, char **argv)
