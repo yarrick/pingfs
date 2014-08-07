@@ -1,0 +1,18 @@
+pingfs - "True cloud storage"
+	by Erik Ekman <erik@kryo.se>
+
+pingfs aims to be a filesystem where the data is stored only in the Internet
+itself, as ICMP Echo packets (pings) travelling from you to remote servers and
+back again.
+
+It will be implemented using raw sockets and FUSE, so superuser powers are
+required. Linux is the indented target OS, portability will not be a goal.
+Both IPv4 and IPv6 are supported.
+
+How to start it: (does not do anything fun yet)
+- Compile by running make
+- Create a textfile with hostname and IP addresses to target
+- Run ./pingfs <filename>
+  It will resolve all hostnames, and then test each resolved address
+  if it responds properly to a number of pings.
+- Some statistics will be printed and the program exits.
