@@ -4,11 +4,8 @@ OBJS=icmp.o
 LDFLAGS = -lanl
 
 pingfs: $(OBJS) pingfs.o
-	$(CC) $(OBJS) pingfs.o -o $@ $(LDFLAGS)
 
-.c.o: $<
-	$(CC) -c $(CFLAGS) $< -o $@
-
+.PHONY = clean
 clean:
 	@rm -f *.o pingfs
 
