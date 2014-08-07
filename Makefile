@@ -1,17 +1,14 @@
-all: pinger pingfs
+all: pingfs
 
 OBJS=icmp.o
 LDFLAGS = -lanl
 
-pinger: $(OBJS) pinger.o
-	$(CC) $(OBJS) pinger.o -o $@ $(LDFLAGS)
-
-pingfs: pingfs.o
+pingfs: $(OBJS) pingfs.o
 	$(CC) $(OBJS) pingfs.o -o $@ $(LDFLAGS)
 
 .c.o: $<
 	$(CC) -c $(CFLAGS) $< -o $@
 
 clean:
-	@rm -f *.o pinger pingfs
+	@rm -f *.o pingfs
 
