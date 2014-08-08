@@ -2,7 +2,7 @@ all: pingfs
 
 OBJS=icmp.o
 LDFLAGS=-lanl
-CPPFLAGS=--std=c99
+CFLAGS+=--std=c99 -Wall -pedantic
 
 pingfs: $(OBJS)
 

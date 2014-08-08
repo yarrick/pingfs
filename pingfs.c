@@ -24,7 +24,6 @@ static int read_hostnames(char *hostfile, struct gaicb **list)
 	int h = 0;
 	int listsize = 32;
 	FILE *file;
-	int i;
 
 	struct gaicb *gais;
 
