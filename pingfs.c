@@ -114,7 +114,7 @@ static void evaluate_hosts(struct eval_host *evalhosts, int hosts)
 				sock = sockv6;
 			}
 
-			if (sock > 0) {
+			if (sock >= 0) {
 				evalhosts[h].host->tx_icmp++;
 				icmp_send(sock, &pkt);
 			}
@@ -127,15 +127,15 @@ static void evaluate_hosts(struct eval_host *evalhosts, int hosts)
 			int i;
 
 			FD_ZERO(&fds);
-			if (sockv4 > 0) FD_SET(sockv4, &fds);
-			if (sockv6 > 0) FD_SET(sockv6, &fds);
+			if (sockv4 >= 0) FD_SET(sockv4, &fds);
+			if (sockv6 >= 0) FD_SET(sockv6, &fds);
 
 			tv.tv_sec = 1;
 			tv.tv_usec = 0;
 			i = select(maxfd+1, &fds, NULL, NULL, &tv);
 			if (!i) break; /* No action for 1 second, break.. */
-			if ((sockv4 > 0) && FD_ISSET(sockv4, &fds)) read_eval_reply(sockv4, evalhosts, hosts);
-			if ((sockv6 > 0) && FD_ISSET(sockv6, &fds)) read_eval_reply(sockv6, evalhosts, hosts);
+			if ((sockv4 >= 0) && FD_ISSET(sockv4, &fds)) read_eval_reply(sockv4, evalhosts, hosts);
+			if ((sockv6 >= 0) && FD_ISSET(sockv6, &fds)) read_eval_reply(sockv6, evalhosts, hosts);
 		}
 	}
 	printf(" done.\n");
@@ -248,8 +248,9 @@ int main(int argc, char **argv)
 	for (i = 0; i < hosts; i++) {
 		pkt_tx += eval_hosts[i].host->tx_icmp;
 		pkt_rx += eval_hosts[i].host->rx_icmp;
-		if (eval_hosts[i].host->tx_icmp == eval_hosts[i].host->rx_icmp) {
-			tot_ok++;
+		if (eval_hosts[i].host->tx_icmp > 0 &&
+			eval_hosts[i].host->tx_icmp == eval_hosts[i].host->rx_icmp) {
+		tot_ok++;
 		}
 		free(eval_hosts[i].host);
 	}
