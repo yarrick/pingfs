@@ -27,10 +27,14 @@ static int read_hostnames(char *hostfile, struct gaicb **list)
 
 	struct gaicb *gais;
 
-	file = fopen(hostfile, "r");
-	if (!file) {
-		perror("Failed to read file");
-		return h;
+	if (strcmp("-", hostfile) == 0) {
+		file = stdin;
+	} else {
+		file = fopen(hostfile, "r");
+		if (!file) {
+			perror("Failed to read file");
+			return h;
+		}
 	}
 
 	gais = malloc(listsize * sizeof(struct gaicb));
