@@ -6,7 +6,7 @@ itself, as ICMP Echo packets (pings) travelling from you to remote servers and
 back again.
 
 It will be implemented using raw sockets and FUSE, so superuser powers are
-required. Linux is the indented target OS, portability will not be a goal.
+required. Linux is the intended target OS, portability will not be a goal.
 Both IPv4 and IPv6 are supported.
 
 How to start it: (does not do anything fun yet)
