@@ -118,7 +118,7 @@ int main(int argc, char **argv)
 		perror("Failed to open IPv6 socket");
 	}
 	if (sockv4 < 0 && sockv6 < 0) {
-		fprintf(stderr, "Failed to open any raw sockets! Exiting\n");
+		fprintf(stderr, "No raw sockets opened. Got root?\n");
 		return EXIT_FAILURE;
 	}
 
