@@ -124,6 +124,8 @@ static void read_eval_reply(int sock, struct eval_host *evalhosts, int hosts)
 
 					/* Store accepted reply */
 					eh->host->rx_icmp++;
+					/* Use new seqno for next packet */
+					eh->cur_seqno++;
 					break;
 				}
 			}
