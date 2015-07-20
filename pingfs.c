@@ -27,7 +27,7 @@
 static int sockv4;
 static int sockv6;
 
-int read_hostnames(char *hostfile, struct gaicb **list[])
+static int read_hostnames(char *hostfile, struct gaicb **list[])
 {
 	int h = 0;
 	FILE *file;
@@ -48,15 +48,54 @@ int read_hostnames(char *hostfile, struct gaicb **list[])
 	return h;
 }
 
+static int resolve_names(struct gaicb **list, int names, struct host **hosts)
+{
+	int ret;
+	int hostcount;
+	int i;
+
+	fprintf(stderr, "Resolving %d hostnames... ", names);
+	fflush(stderr);
+
+	ret = getaddrinfo_a(GAI_WAIT, list, names, NULL);
+	if (ret != 0) {
+		fprintf(stderr, "Resolving failed: %s\n", gai_strerror(ret));
+		return -1;
+	}
+
+	fprintf(stderr, "done.\n");
+
+	hostcount = 0;
+	for (i = 0; i < names; i++) {
+		ret = gai_error(list[i]);
+		if (ret) {
+			fprintf(stderr, "Skipping %s: %s\n", list[i]->ar_name, gai_strerror(ret));
+		} else {
+			struct addrinfo *result = list[i]->ar_result;
+			do {
+				hostcount++;
+				result = result->ai_next;
+			} while (result);
+		}
+	}
+	if (!hostcount) {
+		fprintf(stderr, "No hosts found! Exiting\n");
+		return -1;
+	}
+
+	*hosts = host_create(list, names);
+	host_free_resolvlist(list, names);
+
+	return hostcount;
+}
+
 int main(int argc, char **argv)
 {
 	struct gaicb **list;
-	struct host *hosts;
+	struct host *hosts = NULL;
 	struct host *h;
 	int hostnames;
 	int hostcount;
-	int i;
-	int ret;
 
 	if (argc != 2) {
 		fprintf(stderr, "Expected one argument: path of hostname file\n");
@@ -82,37 +121,10 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	fprintf(stderr, "Resolving %d hostnames... ", hostnames);
-	fflush(stderr);
-
-	ret = getaddrinfo_a(GAI_WAIT, list, hostnames, NULL);
-	if (ret != 0) {
-		fprintf(stderr, "Resolving failed: %s\n", gai_strerror(ret));
+	hostcount = resolve_names(list, hostnames, &hosts);
+	if (hostcount < 0) {
 		return EXIT_FAILURE;
 	}
-
-	fprintf(stderr, "done.\n");
-
-	hostcount = 0;
-	for (i = 0; i < hostnames; i++) {
-		ret = gai_error(list[i]);
-		if (ret) {
-			fprintf(stderr, "Skipping %s: %s\n", list[i]->ar_name, gai_strerror(ret));
-		} else {
-			struct addrinfo *result = list[i]->ar_result;
-			do {
-				hostcount++;
-				result = result->ai_next;
-			} while (result);
-		}
-	}
-	if (!hostcount) {
-		fprintf(stderr, "No hosts found! Exiting\n");
-		return EXIT_FAILURE;
-	}
-
-	hosts = host_create(list, hostnames);
-	host_free_resolvlist(list, hostnames);
 
 	hostcount = host_evaluate(hosts, hostcount, sockv4, sockv6);
 
