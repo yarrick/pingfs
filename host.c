@@ -132,11 +132,12 @@ static void read_eval_reply(int sock, struct eval_host *evalhosts, int hosts)
 	}
 }
 
-int host_evaluate(struct host *hosts, int length, int sockv4, int sockv6)
+int host_evaluate(struct host **hosts, int length, int sockv4, int sockv6)
 {
 	int i;
 	int addr;
 	struct host *h;
+	struct host *prev;
 	struct eval_host *eval_hosts = calloc(length, sizeof(struct eval_host));
 	uint8_t eval_payload[1024];
 
@@ -145,7 +146,7 @@ int host_evaluate(struct host *hosts, int length, int sockv4, int sockv6)
 	}
 
 	addr = 0;
-	h = hosts;
+	h = *hosts;
 	for (i = 0; i < length; i++) {
 		eval_hosts[addr].host = h;
 		eval_hosts[addr].id = addr;
@@ -167,7 +168,8 @@ int host_evaluate(struct host *hosts, int length, int sockv4, int sockv6)
 			int sock;
 			struct icmp_packet pkt;
 
-			memcpy(&pkt.peer, &eval_hosts[h].host->sockaddr, eval_hosts[h].host->sockaddr_len);
+			memcpy(&pkt.peer, &eval_hosts[h].host->sockaddr,
+				eval_hosts[h].host->sockaddr_len);
 			pkt.peer_len = eval_hosts[h].host->sockaddr_len;
 			pkt.type = ICMP_REQUEST;
 			pkt.id = eval_hosts[h].id;
@@ -201,11 +203,36 @@ int host_evaluate(struct host *hosts, int length, int sockv4, int sockv6)
 			tv.tv_usec = 0;
 			i = select(maxfd+1, &fds, NULL, NULL, &tv);
 			if (!i) break; /* No action for 1 second, break.. */
-			if ((sockv4 >= 0) && FD_ISSET(sockv4, &fds)) read_eval_reply(sockv4, eval_hosts, length);
-			if ((sockv6 >= 0) && FD_ISSET(sockv6, &fds)) read_eval_reply(sockv6, eval_hosts, length);
+			if ((sockv4 >= 0) && FD_ISSET(sockv4, &fds))
+				read_eval_reply(sockv4, eval_hosts, length);
+			if ((sockv6 >= 0) && FD_ISSET(sockv6, &fds))
+				read_eval_reply(sockv6, eval_hosts, length);
 		}
 	}
 	printf(" done.\n");
+
+	h = *hosts;
+	prev = NULL;
+	length = 0;
+	while (h) {
+		struct host *next = h->next;
+		/* Filter out non-100% hosts from list */
+		if (h->tx_icmp == 0 ||
+			h->tx_icmp != h->rx_icmp) {
+
+			struct host *host = h;
+			if (host == *hosts)
+				*hosts = next;
+			if (prev)
+				prev->next = next;
+			free(host);
+
+		} else {
+			length++;
+			prev = h;
+		}
+		h = next;
+	}
 
 	free(eval_hosts);
 	return length;

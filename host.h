@@ -40,4 +40,4 @@ void host_free_resolvlist(struct gaicb *list[], int length);
 
 struct host *host_create(struct gaicb *list[], int listlength);
 
-int host_evaluate(struct host *hosts, int length, int sockv4, int sockv6);
+int host_evaluate(struct host **hosts, int length, int sockv4, int sockv6);
