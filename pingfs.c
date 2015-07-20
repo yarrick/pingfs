@@ -51,9 +51,10 @@ int read_hostnames(char *hostfile, struct gaicb **list[])
 int main(int argc, char **argv)
 {
 	struct gaicb **list;
-	struct host *hostlist;
+	struct host *hosts;
+	struct host *h;
 	int hostnames;
-	int hosts;
+	int hostcount;
 	int i;
 	int ret;
 
@@ -92,7 +93,7 @@ int main(int argc, char **argv)
 
 	fprintf(stderr, "done.\n");
 
-	hosts = 0;
+	hostcount = 0;
 	for (i = 0; i < hostnames; i++) {
 		ret = gai_error(list[i]);
 		if (ret) {
@@ -100,36 +101,44 @@ int main(int argc, char **argv)
 		} else {
 			struct addrinfo *result = list[i]->ar_result;
 			do {
-				hosts++;
+				hostcount++;
 				result = result->ai_next;
 			} while (result);
 		}
 	}
-	if (!hosts) {
+	if (!hostcount) {
 		fprintf(stderr, "No hosts found! Exiting\n");
 		return EXIT_FAILURE;
 	}
 
-	hostlist = host_create(list, hostnames, hosts);
+	hosts = host_create(list, hostnames);
 	host_free_resolvlist(list, hostnames);
 
-	hosts = host_evaluate(hostlist, hosts, sockv4, sockv6);
+	hostcount = host_evaluate(hosts, hostcount, sockv4, sockv6);
 
 	int pkt_tx = 0;
 	int pkt_rx = 0;
 	int tot_ok = 0;
-	for (i = 0; i < hosts; i++) {
-		pkt_tx += hostlist[i].tx_icmp;
-		pkt_rx += hostlist[i].rx_icmp;
-		if (hostlist[i].tx_icmp > 0 &&
-			hostlist[i].tx_icmp == hostlist[i].rx_icmp) {
-		tot_ok++;
+	h = hosts;
+	while (h) {
+		pkt_tx += h->tx_icmp;
+		pkt_rx += h->rx_icmp;
+		if (h->tx_icmp > 0 &&
+			h->tx_icmp == h->rx_icmp) {
+
+			tot_ok++;
 		}
+		h = h->next;
 	}
 
-	free(hostlist);
-	printf("\n%d of %d hosts responded correctly to all pings.\n", tot_ok, hosts);
+	printf("\n%d of %d hosts responded correctly to all pings.\n", tot_ok, hostcount);
 	printf("In total: %d packets sent, %d packets received.\n", pkt_tx, pkt_rx);
 
+	h = hosts;
+	while (h) {
+		struct host *host = h;
+		h = h->next;
+		free(host);
+	}
 	return EXIT_SUCCESS;
 }

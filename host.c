@@ -79,20 +79,24 @@ void host_free_resolvlist(struct gaicb *list[], int length)
 	free(list);
 }
 
-struct host *host_create(struct gaicb *list[], int listlength, int hostlength)
+struct host *host_create(struct gaicb *list[], int listlength)
 {
-	struct host *hosts = calloc(hostlength, sizeof(struct host));
+	struct host *hosts = NULL;
+	struct host *last = NULL;
 	int i;
-	int addr;
 
-	addr = 0;
 	for (i = 0; i < listlength; i++) {
 		if (gai_error(list[i]) == 0) {
 			struct addrinfo *result = list[i]->ar_result;
 			while (result) {
-				memcpy(&hosts[addr].sockaddr, result->ai_addr, result->ai_addrlen);
-				hosts[addr].sockaddr_len = result->ai_addrlen;
-				addr++;
+				struct host *h = calloc(1, sizeof(struct host));
+				memcpy(&h->sockaddr, result->ai_addr, result->ai_addrlen);
+				h->sockaddr_len = result->ai_addrlen;
+				if (!hosts)
+					hosts = h;
+				if (last)
+					last->next = h;
+				last = h;
 
 				result = result->ai_next;
 			}
@@ -128,10 +132,11 @@ static void read_eval_reply(int sock, struct eval_host *evalhosts, int hosts)
 	}
 }
 
-int host_evaluate(struct host *hostlist, int length, int sockv4, int sockv6)
+int host_evaluate(struct host *hosts, int length, int sockv4, int sockv6)
 {
 	int i;
 	int addr;
+	struct host *h;
 	struct eval_host *eval_hosts = calloc(length, sizeof(struct eval_host));
 	uint8_t eval_payload[1024];
 
@@ -140,13 +145,15 @@ int host_evaluate(struct host *hostlist, int length, int sockv4, int sockv6)
 	}
 
 	addr = 0;
+	h = hosts;
 	for (i = 0; i < length; i++) {
-		eval_hosts[addr].host = &hostlist[i];
+		eval_hosts[addr].host = h;
 		eval_hosts[addr].id = addr;
 		eval_hosts[addr].cur_seqno = addr * 2;
 		eval_hosts[addr].payload = eval_payload;
 		eval_hosts[addr].payload_len = sizeof(eval_payload);
 		addr++;
+		h = h->next;
 	}
 
 	printf("Evaluating %d hosts.", length);
@@ -199,7 +206,7 @@ int host_evaluate(struct host *hostlist, int length, int sockv4, int sockv6)
 		}
 	}
 	printf(" done.\n");
-	
+
 	free(eval_hosts);
 	return length;
 }

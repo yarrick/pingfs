@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 struct host {
+	struct host *next;
 	unsigned long tx_icmp;
 	unsigned long rx_icmp;
 	struct sockaddr_storage sockaddr;
@@ -37,6 +38,6 @@ struct eval_host {
 int host_make_resolvlist(FILE *hostfile, struct gaicb **list[]);
 void host_free_resolvlist(struct gaicb *list[], int length);
 
-struct host *host_create(struct gaicb *list[], int listlength, int hostlength);
+struct host *host_create(struct gaicb *list[], int listlength);
 
-int host_evaluate(struct host *hostlist, int length, int sockv4, int sockv6);
+int host_evaluate(struct host *hosts, int length, int sockv4, int sockv6);
