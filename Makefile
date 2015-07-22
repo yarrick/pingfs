@@ -1,8 +1,8 @@
 all: pingfs
 
-OBJS=icmp.o host.o pingfs.o
-LDFLAGS=-lanl -lrt
-CFLAGS+=--std=c99 -Wall -pedantic -g
+OBJS=icmp.o host.o pingfs.o fs.o
+LDFLAGS=-lanl -lrt `pkg-config fuse --libs`
+CFLAGS+=--std=c99 -Wall -pedantic -g `pkg-config fuse --cflags`
 
 pingfs: $(OBJS)
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
