@@ -27,14 +27,6 @@ struct host {
 	socklen_t sockaddr_len;
 };
 
-struct eval_host {
-	struct host *host;
-	uint16_t cur_seqno;
-	uint16_t id;
-	uint8_t *payload;
-	size_t payload_len;
-};
-
 int host_make_resolvlist(FILE *hostfile, struct gaicb **list[]);
 void host_free_resolvlist(struct gaicb *list[], int length);
 

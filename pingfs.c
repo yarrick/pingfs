@@ -95,8 +95,7 @@ int main(int argc, char **argv)
 	struct host *hosts = NULL;
 	struct host *h;
 	int hostnames;
-	int found_hosts;
-	int good_hosts;
+	int host_count;
 
 	if (argc != 2) {
 		fprintf(stderr, "Expected one argument: path of hostname file\n");
@@ -122,14 +121,18 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	found_hosts = resolve_names(list, hostnames, &hosts);
-	if (found_hosts < 0) {
+	host_count = resolve_names(list, hostnames, &hosts);
+	if (host_count < 0) {
 		return EXIT_FAILURE;
 	}
 
-	good_hosts = host_evaluate(&hosts, found_hosts, sockv4, sockv6);
-	printf("\n%d of %d hosts responded correctly to all pings.\n", good_hosts, found_hosts);
+	host_count = host_evaluate(&hosts, host_count, sockv4, sockv6);
+	if (!host_count) {
+		fprintf(stderr, "No host passed the test\n");
+		return EXIT_FAILURE;
+	}
 
+	/* Clean up */
 	h = hosts;
 	while (h) {
 		struct host *host = h;

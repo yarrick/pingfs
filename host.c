@@ -15,12 +15,26 @@
  */
 #include "host.h"
 #include "icmp.h"
+#include <time.h>
+
+#ifndef CLOCK_MONOTONIC_RAW
+#define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC
+#endif
 
 #include <sys/param.h>
 
 struct linked_gaicb {
 	struct gaicb gaicb;
 	struct linked_gaicb *next;
+};
+
+struct eval_host {
+	struct host *host;
+	struct timespec sendtime;
+	uint16_t cur_seqno;
+	uint16_t id;
+	uint8_t *payload;
+	size_t payload_len;
 };
 
 static const struct addrinfo addr_request = {
@@ -105,13 +119,28 @@ struct host *host_create(struct gaicb *list[], int listlength)
 	return hosts;
 }
 
+static uint64_t latency_sum_us;
+static uint32_t latency_count;
+
+static void diff_add(struct timespec *start, struct timespec *end)
+{
+	uint64_t us = (end->tv_sec - start->tv_sec) * 1000000;
+	us -= start->tv_nsec / 1000;
+	us += end->tv_nsec / 1000;
+
+	latency_sum_us += us;
+	latency_count++;
+}
+
 static void read_eval_reply(int sock, struct eval_host *evalhosts, int hosts)
 {
 	struct icmp_packet mypkt;
+	struct timespec recvtime;
 	mypkt.peer_len = sizeof(struct sockaddr_storage);
 	uint8_t buf[BUFSIZ];
 	int len = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr *) &mypkt.peer, &mypkt.peer_len);
 	if (len > 0) {
+		clock_gettime(CLOCK_MONOTONIC_RAW, &recvtime);
 		if (icmp_parse(&mypkt, buf, len) == 0) {
 			int i;
 			for (i = 0; i < hosts; i++) {
@@ -126,6 +155,7 @@ static void read_eval_reply(int sock, struct eval_host *evalhosts, int hosts)
 					eh->host->rx_icmp++;
 					/* Use new seqno for next packet */
 					eh->cur_seqno++;
+					diff_add(&eh->sendtime, &recvtime);
 					break;
 				}
 			}
@@ -138,6 +168,7 @@ int host_evaluate(struct host **hosts, int length, int sockv4, int sockv6)
 {
 	int i;
 	int addr;
+	int good_hosts;
 	struct host *h;
 	struct host *prev;
 	struct eval_host *eval_hosts = calloc(length, sizeof(struct eval_host));
@@ -186,6 +217,7 @@ int host_evaluate(struct host **hosts, int length, int sockv4, int sockv6)
 			}
 
 			if (sock >= 0) {
+				clock_gettime(CLOCK_MONOTONIC_RAW, &eval_hosts[h].sendtime);
 				eval_hosts[h].host->tx_icmp++;
 				icmp_send(sock, &pkt);
 			}
@@ -215,7 +247,7 @@ int host_evaluate(struct host **hosts, int length, int sockv4, int sockv6)
 
 	h = *hosts;
 	prev = NULL;
-	length = 0;
+	good_hosts = 0;
 	while (h) {
 		struct host *next = h->next;
 		/* Filter out non-100% hosts from list */
@@ -230,12 +262,18 @@ int host_evaluate(struct host **hosts, int length, int sockv4, int sockv6)
 			free(host);
 
 		} else {
-			length++;
+			good_hosts++;
 			prev = h;
 		}
 		h = next;
 	}
 
 	free(eval_hosts);
-	return length;
+	printf("%d of %d hosts responded correctly to all pings", good_hosts, length);
+	if (good_hosts) {
+		printf(" (average RTT %.02f ms)",
+			latency_sum_us / ( latency_count * 1000.0f));
+	}
+	printf("\n");
+	return good_hosts;
 }

@@ -1,7 +1,7 @@
 all: pingfs
 
 OBJS=icmp.o host.o pingfs.o
-LDFLAGS=-lanl
+LDFLAGS=-lanl -lrt
 CFLAGS+=--std=c99 -Wall -pedantic -g
 
 pingfs: $(OBJS)
