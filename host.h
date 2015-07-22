@@ -13,6 +13,9 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+#ifndef __HOST_H__
+#define __HOST_H__
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
@@ -33,3 +36,5 @@ void host_free_resolvlist(struct gaicb *list[], int length);
 struct host *host_create(struct gaicb *list[], int listlength);
 
 int host_evaluate(struct host **hosts, int length, int sockv4, int sockv6);
+
+#endif
