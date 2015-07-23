@@ -171,6 +171,9 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	/* Always run FUSE in foreground */
+	fuse_opt_add_arg(&args, "-f");
+
 	printf("Mounting filesystem\n");
 	fuse_main(args.argc, args.argv, &fs_ops);
 

@@ -12,7 +12,7 @@ Both IPv4 and IPv6 are supported.
 How to start it: (does not do anything fun yet)
 - Compile by running make
 - Create a textfile with hostname and IP addresses to target
-- As root, run ./pingfs -f <filename> <mountpoint>
+- As root, run ./pingfs <filename> <mountpoint>
   It will resolve all hostnames, and then test each resolved address
   if it responds properly to a number of pings.
   Some statistics will be printed and then the filesystem will be mounted.
