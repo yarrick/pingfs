@@ -28,6 +28,12 @@
 static int sockv4;
 static int sockv6;
 
+struct arginfo {
+	char *hostfile;
+	char *mountpoint;
+	int num_args;
+};
+
 static int read_hostnames(const char *hfile, struct gaicb **list[])
 {
 	int h = 0;
@@ -95,17 +101,18 @@ static void print_usage(char *progname)
 	fprintf(stderr, "Usage: %s hostfile mountpoint\n", progname);
 }
 
-static char *hostfile;
-static int num_args;
-
 static int pingfs_opt_proc(void *data, const char *arg, int key, struct fuse_args *outargs)
 {
+	struct arginfo *arginfo = (struct arginfo *) data;
+
 	/* Get first non-option argument as hostfile */
 	if (key == FUSE_OPT_KEY_NONOPT) {
-		num_args++;
-		if (hostfile == NULL) {
-			hostfile = strdup(arg);
+		arginfo->num_args++;
+		if (arginfo->hostfile == NULL) {
+			arginfo->hostfile = strdup(arg);
 			return 0;
+		} else {
+			arginfo->mountpoint = strdup(arg);
 		}
 	}
 	return 1;
@@ -119,21 +126,36 @@ int main(int argc, char **argv)
 	int hostnames;
 	int host_count;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+	struct arginfo arginfo;
+	struct stat mountdir;
+	int res;
 
-	if (fuse_opt_parse(&args, NULL, NULL, pingfs_opt_proc) == -1) {
+	memset(&arginfo, 0, sizeof(arginfo));
+	if (fuse_opt_parse(&args, &arginfo, NULL, pingfs_opt_proc) == -1) {
 		fprintf(stderr, "Error parsing options!\n");
 		print_usage(argv[0]);
 		return EXIT_FAILURE;
 	}
 
-	if (num_args != 2) {
+	if (arginfo.num_args != 2) {
 		fprintf(stderr, "Need two arguments!\n");
 		print_usage(argv[0]);
 		return EXIT_FAILURE;
 	}
 
-	hostnames = read_hostnames(hostfile, &list);
-	free(hostfile);
+	res = stat(arginfo.mountpoint, &mountdir);
+	if (res) {
+		perror("Failed to check mountpoint");
+		return EXIT_FAILURE;
+	}
+	if (!S_ISDIR(mountdir.st_mode)) {
+		fprintf(stderr, "Mountpoint must be a directory! Exiting\n");
+		return EXIT_FAILURE;
+	}
+	free(arginfo.mountpoint);
+
+	hostnames = read_hostnames(arginfo.hostfile, &list);
+	free(arginfo.hostfile);
 	if (!hostnames) {
 		fprintf(stderr, "No hosts configured! Exiting\n");
 		return EXIT_FAILURE;
