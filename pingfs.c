@@ -188,6 +188,10 @@ int main(int argc, char **argv)
 	/* Always run FUSE in foreground */
 	fuse_opt_add_arg(&args, "-f");
 
+	/* Default permissions handling, allow all users
+	 * Directory is 775 so only root can use it anyway */
+	fuse_opt_add_arg(&args, "-odefault_permissions,allow_other");
+
 	printf("Mounting filesystem\n");
 	fuse_main(args.argc, args.argv, &fs_ops);
 

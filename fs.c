@@ -119,7 +119,7 @@ static int fs_getattr(const char *name, struct stat *stat)
 	stat->st_ctime = 0;
 
 	if (strcmp("/", name) == 0) {
-		stat->st_mode = S_IFDIR | 0777;
+		stat->st_mode = S_IFDIR | 0775;
 		stat->st_size = 0;
 		stat->st_blksize = 0;
 		stat->st_blocks = 0;
