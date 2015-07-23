@@ -63,6 +63,11 @@ static struct file *find_file(const char *name)
 	return NULL;
 }
 
+static int fs_mkdir(const char *name, mode_t mode)
+{
+	return -ENOTSUP;
+}
+
 static int fs_mknod(const char *name, mode_t mode, dev_t device)
 {
 	struct file *f;
@@ -178,6 +183,7 @@ const struct fuse_operations fs_ops = {
 	.getattr = fs_getattr,
 	.utime = fs_utime,
 	.chmod = fs_chmod,
+	.mkdir = fs_mkdir,
 	.mknod = fs_mknod,
 	.unlink = fs_unlink,
 	.readdir = fs_readdir,
