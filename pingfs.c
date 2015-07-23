@@ -111,14 +111,6 @@ static int pingfs_opt_proc(void *data, const char *arg, int key, struct fuse_arg
 	return 1;
 }
 
-static const struct fuse_operations fs_ops = {
-	.getattr = fs_getattr,
-	.chmod = fs_chmod,
-	.mknod = fs_mknod,
-	.unlink = fs_unlink,
-	.readdir = fs_readdir,
-};
-
 int main(int argc, char **argv)
 {
 	struct gaicb **list;

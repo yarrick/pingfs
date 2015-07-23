@@ -63,7 +63,7 @@ static struct file *find_file(const char *name)
 	return NULL;
 }
 
-int fs_mknod(const char *name, mode_t mode, dev_t device)
+static int fs_mknod(const char *name, mode_t mode, dev_t device)
 {
 	struct file *f;
 
@@ -83,7 +83,7 @@ int fs_mknod(const char *name, mode_t mode, dev_t device)
 	return 0;
 }
 
-int fs_chmod(const char *name, mode_t mode)
+static int fs_chmod(const char *name, mode_t mode)
 {
 	struct file *f;
 
@@ -95,7 +95,7 @@ int fs_chmod(const char *name, mode_t mode)
 	return 0;
 }
 
-int fs_getattr(const char *name, struct stat *stat)
+static int fs_getattr(const char *name, struct stat *stat)
 {
 	struct file *f;
 
@@ -122,7 +122,7 @@ int fs_getattr(const char *name, struct stat *stat)
 	return 0;
 }
 
-int fs_unlink(const char *name)
+static int fs_unlink(const char *name)
 {
 	struct file *f = files;
 	struct file *last = NULL;
@@ -142,7 +142,7 @@ int fs_unlink(const char *name)
 	return -ENOENT;
 }
 
-int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	off_t offset, struct fuse_file_info *fi)
 {
 	struct file *f;
@@ -161,3 +161,12 @@ int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	return 0;
 }
+
+const struct fuse_operations fs_ops = {
+	.getattr = fs_getattr,
+	.chmod = fs_chmod,
+	.mknod = fs_mknod,
+	.unlink = fs_unlink,
+	.readdir = fs_readdir,
+};
+

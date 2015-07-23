@@ -23,11 +23,6 @@
 
 void fs_cleanup();
 
-int fs_mknod(const char *name, mode_t mode, dev_t device);
-int fs_chmod(const char *name, mode_t mode);
-int fs_getattr(const char *name, struct stat *stat);
-int fs_unlink(const char *name);
-int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-	off_t offset, struct fuse_file_info *fi);
+extern const struct fuse_operations fs_ops;
 
 #endif
