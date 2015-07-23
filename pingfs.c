@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <netdb.h>
+#include <pwd.h>
 
 #include "icmp.h"
 #include "host.h"
@@ -32,6 +33,15 @@ struct arginfo {
 	char *hostfile;
 	char *mountpoint;
 	int num_args;
+};
+
+enum {
+	KEY_ASUSER,
+};
+
+static const struct fuse_opt pingfs_opts[] = {
+	FUSE_OPT_KEY("-u ", KEY_ASUSER),
+	FUSE_OPT_END,
 };
 
 static int read_hostnames(const char *hfile, struct gaicb **list[])
@@ -98,22 +108,40 @@ static int resolve_names(struct gaicb **list, int names, struct host **hosts)
 
 static void print_usage(char *progname)
 {
-	fprintf(stderr, "Usage: %s hostfile mountpoint\n", progname);
+	fprintf(stderr, "Usage: %s [-u username] hostfile mountpoint\n"
+		"Options:\n"
+		" -u username  : Mount the filesystem as this user\n", progname);
 }
 
 static int pingfs_opt_proc(void *data, const char *arg, int key, struct fuse_args *outargs)
 {
 	struct arginfo *arginfo = (struct arginfo *) data;
+	struct passwd *pw;
 
-	/* Get first non-option argument as hostfile */
-	if (key == FUSE_OPT_KEY_NONOPT) {
+	switch (key) {
+	case FUSE_OPT_KEY_NONOPT:
 		arginfo->num_args++;
-		if (arginfo->hostfile == NULL) {
+		if (!arginfo->hostfile) {
+			/* Get first non-option argument as hostfile */
 			arginfo->hostfile = strdup(arg);
 			return 0;
-		} else {
+		} else if (!arginfo->mountpoint) {
 			arginfo->mountpoint = strdup(arg);
 		}
+		break;
+	case KEY_ASUSER:
+		pw = getpwnam(&arg[2]); /* Offset 2 to skip '-u' from arg */
+		if (pw) {
+			char userarg[64];
+			snprintf(userarg, sizeof(userarg), "-ouid=%d,gid=%d", pw->pw_uid, pw->pw_gid);
+			fuse_opt_add_arg(outargs, userarg);
+			return 0;
+		} else {
+			fprintf(stderr, "Bad username given! Exiting\n");
+			print_usage(outargs->argv[0]);
+			exit(1);
+		}
+		break;
 	}
 	return 1;
 }
@@ -131,7 +159,7 @@ int main(int argc, char **argv)
 	int res;
 
 	memset(&arginfo, 0, sizeof(arginfo));
-	if (fuse_opt_parse(&args, &arginfo, NULL, pingfs_opt_proc) == -1) {
+	if (fuse_opt_parse(&args, &arginfo, pingfs_opts, pingfs_opt_proc) == -1) {
 		fprintf(stderr, "Error parsing options!\n");
 		print_usage(argv[0]);
 		return EXIT_FAILURE;
