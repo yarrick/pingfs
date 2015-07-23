@@ -36,10 +36,12 @@ struct arginfo {
 };
 
 enum {
+	KEY_HELP,
 	KEY_ASUSER,
 };
 
 static const struct fuse_opt pingfs_opts[] = {
+	FUSE_OPT_KEY("-h",  KEY_HELP),
 	FUSE_OPT_KEY("-u ", KEY_ASUSER),
 	FUSE_OPT_END,
 };
@@ -108,8 +110,9 @@ static int resolve_names(struct gaicb **list, int names, struct host **hosts)
 
 static void print_usage(char *progname)
 {
-	fprintf(stderr, "Usage: %s [-u username] hostfile mountpoint\n"
+	fprintf(stderr, "Usage: %s [options] hostfile mountpoint\n"
 		"Options:\n"
+		" -h           : Print this help and exit\n"
 		" -u username  : Mount the filesystem as this user\n", progname);
 }
 
@@ -129,6 +132,9 @@ static int pingfs_opt_proc(void *data, const char *arg, int key, struct fuse_arg
 			arginfo->mountpoint = strdup(arg);
 		}
 		break;
+	case KEY_HELP:
+		print_usage(outargs->argv[0]);
+		exit(0);
 	case KEY_ASUSER:
 		pw = getpwnam(&arg[2]); /* Offset 2 to skip '-u' from arg */
 		if (pw) {
