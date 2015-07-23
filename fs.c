@@ -95,6 +95,18 @@ static int fs_chmod(const char *name, mode_t mode)
 	return 0;
 }
 
+static int fs_utime(const char *name, struct utimbuf *utim)
+{
+	struct file *f;
+
+	f = find_file(name);
+	if (!f)
+		return -ENOENT;
+
+	/* No-op */
+	return 0;
+}
+
 static int fs_getattr(const char *name, struct stat *stat)
 {
 	struct file *f;
@@ -164,6 +176,7 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 const struct fuse_operations fs_ops = {
 	.getattr = fs_getattr,
+	.utime = fs_utime,
 	.chmod = fs_chmod,
 	.mknod = fs_mknod,
 	.unlink = fs_unlink,
