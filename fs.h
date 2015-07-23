@@ -15,7 +15,7 @@
  */
 #ifndef __FS_H__
 #define __FS_H__
-#define FUSE_USE_VERSION 25
+#define FUSE_USE_VERSION 26
 
 #include <sys/types.h>
 #include <sys/stat.h>

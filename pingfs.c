@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 	fuse_opt_add_arg(&args, "-odefault_permissions,allow_other");
 
 	printf("Mounting filesystem\n");
-	fuse_main(args.argc, args.argv, &fs_ops);
+	fuse_main(args.argc, args.argv, &fs_ops, NULL);
 
 	/* Clean up */
 	fuse_opt_free_args(&args);
