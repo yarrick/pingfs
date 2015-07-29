@@ -55,10 +55,16 @@ static void fs_free(struct file *f)
 	free(f);
 }
 
+static void *fs_init(struct fuse_conn_info *conn)
+{
+	return net_start_responder();
+}
+
 static void fs_destroy(void *data)
 {
 	struct file *f;
 
+	net_stop_responder(data);
 	f = files;
 	while (f) {
 		struct file *next = f->next;
@@ -242,6 +248,7 @@ const struct fuse_operations fs_ops = {
 	.readdir = fs_readdir,
 	.open = fs_open,
 	.write = fs_write,
+	.init = fs_init,
 	.destroy = fs_destroy,
 };
 

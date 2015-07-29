@@ -21,6 +21,7 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <sys/param.h>
+#include <pthread.h>
 
 static int sockv4;
 static int sockv6;
@@ -110,4 +111,35 @@ int net_recv(struct timeval *tv, net_recv_fn_t recv_fn, void *recv_data)
 	if ((sockv6 >= 0) && FD_ISSET(sockv6, &fds))
 		handle_recv(sockv6, recv_fn, recv_data);
 	return i;
+}
+
+static void responder_recv(void *userdata, struct sockaddr_storage *addr,
+	size_t addrlen, uint16_t id, uint16_t seqno, const uint8_t *data, size_t len)
+{
+}
+
+static void *responder_thread(void *arg)
+{
+	for (;;) {
+		struct timeval tv;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+		net_recv(&tv, responder_recv, NULL);
+	}
+	return NULL;
+}
+
+void *net_start_responder()
+{
+	pthread_t *thread = malloc(sizeof(pthread_t));
+	pthread_create(thread, NULL, responder_thread, NULL);
+	return thread;
+}
+
+void net_stop_responder(void *data)
+{
+	pthread_t *thread = (pthread_t *) data;
+	pthread_cancel(*thread);
+	pthread_join(*thread, NULL);
+	free(thread);
 }
