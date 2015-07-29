@@ -15,6 +15,7 @@
  */
 #include "net.h"
 #include "icmp.h"
+#include "chunk.h"
 
 #include <netinet/ip_icmp.h>
 #include <netinet/icmp6.h>
@@ -113,18 +114,13 @@ int net_recv(struct timeval *tv, net_recv_fn_t recv_fn, void *recv_data)
 	return i;
 }
 
-static void responder_recv(void *userdata, struct sockaddr_storage *addr,
-	size_t addrlen, uint16_t id, uint16_t seqno, const uint8_t *data, size_t len)
-{
-}
-
 static void *responder_thread(void *arg)
 {
 	for (;;) {
 		struct timeval tv;
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
-		net_recv(&tv, responder_recv, NULL);
+		net_recv(&tv, chunk_reply, NULL);
 	}
 	return NULL;
 }

@@ -15,6 +15,7 @@
  */
 #include "chunk.h"
 #include "host.h"
+#include "net.h"
 
 #include <pthread.h>
 
@@ -70,3 +71,25 @@ void chunk_remove(struct chunk *c)
 	}
 	pthread_mutex_unlock(&chunk_mutex);
 }
+
+void chunk_reply(void *userdata, struct sockaddr_storage *addr,
+	size_t addrlen, uint16_t id, uint16_t seqno, const uint8_t *data, size_t len)
+{
+	struct chunk *c;
+	pthread_mutex_lock(&chunk_mutex);
+	c = chunk_head;
+	while (c) {
+		if (c->id == id) {
+			c->host->rx_icmp++;
+			if (len == c->len && seqno == c->seqno) {
+				/* Correct data, send again */
+				c->seqno++;
+				net_send(c->host, id, c->seqno, data, len);
+			}
+			break;
+		}
+		c = c->next_active;
+	}
+	pthread_mutex_unlock(&chunk_mutex);
+}
+

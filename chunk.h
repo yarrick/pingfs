@@ -16,6 +16,7 @@
 #ifndef __CHUNK_H__
 #define __CHUNK_H__
 #include <stdint.h>
+#include <sys/socket.h>
 
 #define CHUNK_SIZE 1024
 
@@ -40,4 +41,8 @@ void chunk_free(struct chunk *c);
 /* Add/remove chunk from active list */
 void chunk_add(struct chunk *c);
 void chunk_remove(struct chunk *c);
+
+/* Handle icmp reply */
+void chunk_reply(void *userdata, struct sockaddr_storage *addr,
+	size_t addrlen, uint16_t id, uint16_t seqno, const uint8_t *data, size_t len);
 #endif
