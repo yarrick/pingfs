@@ -55,7 +55,7 @@ static void fs_free(struct file *f)
 	free(f);
 }
 
-void fs_cleanup()
+static void fs_destroy(void *data)
 {
 	struct file *f;
 
@@ -242,5 +242,6 @@ const struct fuse_operations fs_ops = {
 	.readdir = fs_readdir,
 	.open = fs_open,
 	.write = fs_write,
+	.destroy = fs_destroy,
 };
 

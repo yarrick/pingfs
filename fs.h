@@ -21,8 +21,6 @@
 #include <sys/stat.h>
 #include <fuse.h>
 
-void fs_cleanup();
-
 extern const struct fuse_operations fs_ops;
 
 #endif

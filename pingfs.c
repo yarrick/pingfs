@@ -230,6 +230,5 @@ int main(int argc, char **argv)
 		h = h->next;
 		free(host);
 	}
-	fs_cleanup();
 	return EXIT_SUCCESS;
 }
