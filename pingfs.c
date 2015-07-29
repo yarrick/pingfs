@@ -226,6 +226,9 @@ int main(int argc, char **argv)
 	 * Directory is 775 so only root can use it anyway */
 	fuse_opt_add_arg(&args, "-odefault_permissions,allow_other");
 
+	/* Enable direct IO so we can do partial read/writes */
+	fuse_opt_add_arg(&args, "-odirect_io");
+
 	printf("Mounting filesystem\n");
 	fuse_main(args.argc, args.argv, &fs_ops, NULL);
 
