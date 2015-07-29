@@ -14,16 +14,31 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 #include "fs.h"
+#include "host.h"
+#include "net.h"
 
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/param.h>
+
+extern int sockv4;
+extern int sockv6;
+
+#define CHUNK_SIZE 1024
+struct chunk {
+	struct chunk *next;
+	struct host *host;
+	uint16_t id;
+	uint16_t len;
+};
 
 struct file {
 	struct file *next;
 	const char *name;
+	struct chunk *chunks;
 	mode_t mode;
 };
 
@@ -31,6 +46,14 @@ struct file *files;
 
 static void fs_free(struct file *f)
 {
+	struct chunk *c, *next;
+
+	c = f->chunks;
+	while (c) {
+		next = c->next;
+		free(c);
+		c = next;
+	}
 	free((void*) f->name);
 	free(f);
 }
@@ -187,6 +210,31 @@ static int fs_open(const char *name, struct fuse_file_info *fileinfo)
 	return 0;
 }
 
+static int fs_write(const char *name, const char *buf, size_t size,
+	off_t offset, struct fuse_file_info *fileinfo)
+{
+	struct file *f;
+	struct chunk *c;
+
+	f = find_file(name);
+	if (!f)
+		return -ENOENT;
+
+	/* Only one write supported */
+	if (f->chunks)
+		return -ENOTSUP;
+
+	c = calloc(1, sizeof(*c));
+	c->id = ((uint64_t) f) & 0xFFFF;
+	c->len = MIN(size, CHUNK_SIZE);
+
+	f->chunks = c;
+	c->host = host_get_next();
+	net_send(c->host, c->id, 0, (const uint8_t *) buf, c->len);
+
+	return c->len;
+}
+
 const struct fuse_operations fs_ops = {
 	.getattr = fs_getattr,
 	.utime = fs_utime,
@@ -196,5 +244,6 @@ const struct fuse_operations fs_ops = {
 	.unlink = fs_unlink,
 	.readdir = fs_readdir,
 	.open = fs_open,
+	.write = fs_write,
 };
 
