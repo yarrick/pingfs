@@ -24,9 +24,6 @@
 #include <unistd.h>
 #include <sys/param.h>
 
-extern int sockv4;
-extern int sockv6;
-
 #define CHUNK_SIZE 1024
 struct chunk {
 	struct chunk *next;
