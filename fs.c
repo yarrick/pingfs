@@ -16,6 +16,7 @@
 #include "fs.h"
 #include "host.h"
 #include "net.h"
+#include "chunk.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -23,14 +24,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/param.h>
-
-#define CHUNK_SIZE 1024
-struct chunk {
-	struct chunk *next;
-	struct host *host;
-	uint16_t id;
-	uint16_t len;
-};
 
 struct file {
 	struct file *next;
@@ -47,8 +40,9 @@ static void fs_free(struct file *f)
 
 	c = f->chunks;
 	while (c) {
-		next = c->next;
-		free(c);
+		next = c->next_file;
+		chunk_remove(c);
+		chunk_free(c);
 		c = next;
 	}
 	free((void*) f->name);
@@ -227,13 +221,13 @@ static int fs_write(const char *name, const char *buf, size_t size,
 	if (f->chunks)
 		return -ENOTSUP;
 
-	c = calloc(1, sizeof(*c));
-	c->id = ((uint64_t) f) & 0xFFFF;
+	c = chunk_create();
 	c->len = MIN(size, CHUNK_SIZE);
+	chunk_add(c);
 
 	f->chunks = c;
 	c->host = host_get_next();
-	net_send(c->host, c->id, 0, (const uint8_t *) buf, c->len);
+	net_send(c->host, c->id, c->seqno, (const uint8_t *) buf, c->len);
 
 	return c->len;
 }

@@ -15,6 +15,7 @@
  */
 #include "host.h"
 #include "net.h"
+#include "chunk.h"
 
 #include <time.h>
 #include <assert.h>
@@ -173,7 +174,7 @@ int host_evaluate(struct host **hosts, int length)
 	struct host *h;
 	struct host *prev;
 	struct evaldata evaldata;
-	uint8_t eval_payload[1024];
+	uint8_t eval_payload[CHUNK_SIZE];
 
 	evaldata.hosts = calloc(length, sizeof(struct eval_host));
 	evaldata.count = length;
