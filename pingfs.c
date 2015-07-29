@@ -13,21 +13,17 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-#define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <netdb.h>
 #include <pwd.h>
 
-#include "icmp.h"
 #include "host.h"
 #include "fs.h"
+#include "net.h"
 
 #include <arpa/inet.h>
-
-static int sockv4;
-static int sockv6;
 
 struct arginfo {
 	char *hostfile;
@@ -195,15 +191,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	sockv4 = open_icmpv4_socket();
-	if (sockv4 < 0) {
-		perror("Failed to open IPv4 socket");
-	}
-	sockv6 = open_icmpv6_socket();
-	if (sockv6 < 0) {
-		perror("Failed to open IPv6 socket");
-	}
-	if (sockv4 < 0 && sockv6 < 0) {
+	if (net_open_sockets()) {
 		fprintf(stderr, "No raw sockets opened. Got root?\n");
 		return EXIT_FAILURE;
 	}
@@ -213,11 +201,13 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	host_count = host_evaluate(&hosts, host_count, sockv4, sockv6);
+	host_count = host_evaluate(&hosts, host_count);
 	if (!host_count) {
 		fprintf(stderr, "No host passed the test\n");
 		return EXIT_FAILURE;
 	}
+
+	host_use(hosts);
 
 	/* Always run FUSE in foreground */
 	fuse_opt_add_arg(&args, "-f");

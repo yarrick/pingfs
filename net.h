@@ -13,31 +13,19 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef __HOST_H__
-#define __HOST_H__
+#ifndef __NET_H__
+#define __NET_H__
+#include "host.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <netdb.h>
-#include <stdlib.h>
+#include <stdint.h>
+#include <sys/types.h>
 
-struct host {
-	struct host *next;
-	unsigned long tx_icmp;
-	unsigned long rx_icmp;
-	struct sockaddr_storage sockaddr;
-	socklen_t sockaddr_len;
-};
+int net_open_sockets();
+void net_send(struct host *host, uint16_t id, uint16_t seqno, const uint8_t *data, size_t len);
 
-int host_make_resolvlist(FILE *hostfile, struct gaicb **list[]);
-void host_free_resolvlist(struct gaicb *list[], int length);
+typedef void (*net_recv_fn_t)(void *userdata, struct sockaddr_storage *addr,
+	size_t addrlen, uint16_t id, uint16_t seqno, const uint8_t *data, size_t len);
 
-struct host *host_create(struct gaicb *list[], int listlength);
-
-int host_evaluate(struct host **hosts, int length);
-
-void host_use(struct host* hosts);
-
-struct host *host_get_next();
-
+int net_recv(struct timeval *tv, net_recv_fn_t recv_fn, void *recv_data);
 #endif
+

@@ -166,22 +166,4 @@ void icmp_dump(struct icmp_packet *pkt)
 		icmp_type_str(pkt), ipaddr, pkt->id, pkt->seqno, pkt->payload_len);
 }
 
-// v4 socket will return full IP header
-int open_icmpv4_socket()
-{
-	return socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
-}
-
-// v6 socket will just give ICMPv6 data, no IP header
-int open_icmpv6_socket()
-{
-	int sock = socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
-	if (sock >= 0) {
-		struct icmp6_filter filter;
-		ICMP6_FILTER_SETBLOCKALL(&filter);
-		ICMP6_FILTER_SETPASS(ICMP6_ECHO_REPLY, &filter);
-		setsockopt(sock, IPPROTO_ICMPV6, ICMP6_FILTER, &filter, sizeof(filter));
-	}
-	return sock;
-}
 

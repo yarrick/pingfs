@@ -14,8 +14,10 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 #include "host.h"
-#include "icmp.h"
+#include "net.h"
+
 #include <time.h>
+#include <assert.h>
 
 #ifndef CLOCK_MONOTONIC_RAW
 #define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC
@@ -132,47 +134,49 @@ static void diff_add(struct timespec *start, struct timespec *end)
 	latency_count++;
 }
 
-static void read_eval_reply(int sock, struct eval_host *evalhosts, int hosts)
-{
-	struct icmp_packet mypkt;
-	struct timespec recvtime;
-	mypkt.peer_len = sizeof(struct sockaddr_storage);
-	uint8_t buf[BUFSIZ];
-	int len = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr *) &mypkt.peer, &mypkt.peer_len);
-	if (len > 0) {
-		clock_gettime(CLOCK_MONOTONIC_RAW, &recvtime);
-		if (icmp_parse(&mypkt, buf, len) == 0) {
-			int i;
-			for (i = 0; i < hosts; i++) {
-				struct eval_host *eh = &evalhosts[i];
-				if (memcmp(&mypkt.peer, &eh->host->sockaddr, mypkt.peer_len) == 0 &&
-					eh->payload_len == mypkt.payload_len &&
-					memcmp(mypkt.payload, eh->payload, eh->payload_len) == 0 &&
-					eh->id == mypkt.id &&
-					eh->cur_seqno == mypkt.seqno) {
+struct evaldata {
+	struct eval_host *hosts;
+	int count;
+};
 
-					/* Store accepted reply */
-					eh->host->rx_icmp++;
-					/* Use new seqno for next packet */
-					eh->cur_seqno++;
-					diff_add(&eh->sendtime, &recvtime);
-					break;
-				}
-			}
-			free(mypkt.payload);
+static void eval_reply(void *userdata, struct sockaddr_storage *addr,
+	size_t addrlen, uint16_t id, uint16_t seqno, const uint8_t *data, size_t len)
+{
+	int i;
+	struct evaldata *eval = (struct evaldata *) userdata;
+	struct timespec recvtime;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &recvtime);
+	for (i = 0; i < eval->count; i++) {
+		struct eval_host *eh = &eval->hosts[i];
+		if (addrlen == eh->host->sockaddr_len &&
+			memcmp(addr, &eh->host->sockaddr, addrlen) == 0 &&
+			eh->payload_len == len &&
+			memcmp(data, eh->payload, eh->payload_len) == 0 &&
+			eh->id == id &&
+			eh->cur_seqno == seqno) {
+
+			/* Store accepted reply */
+			eh->host->rx_icmp++;
+			/* Use new seqno for next packet */
+			eh->cur_seqno++;
+			diff_add(&eh->sendtime, &recvtime);
+			break;
 		}
 	}
 }
 
-int host_evaluate(struct host **hosts, int length, int sockv4, int sockv6)
+int host_evaluate(struct host **hosts, int length)
 {
 	int i;
 	int addr;
 	int good_hosts;
 	struct host *h;
 	struct host *prev;
-	struct eval_host *eval_hosts = calloc(length, sizeof(struct eval_host));
+	struct evaldata evaldata;
 	uint8_t eval_payload[1024];
+
+	evaldata.hosts = calloc(length, sizeof(struct eval_host));
+	evaldata.count = length;
 
 	for (i = 0; i < sizeof(eval_payload); i++) {
 		eval_payload[i] = i & 0xff;
@@ -181,66 +185,40 @@ int host_evaluate(struct host **hosts, int length, int sockv4, int sockv6)
 	addr = 0;
 	h = *hosts;
 	for (i = 0; i < length; i++) {
-		eval_hosts[addr].host = h;
-		eval_hosts[addr].id = addr;
-		eval_hosts[addr].cur_seqno = addr * 2;
-		eval_hosts[addr].payload = eval_payload;
-		eval_hosts[addr].payload_len = sizeof(eval_payload);
+		evaldata.hosts[addr].host = h;
+		evaldata.hosts[addr].id = addr;
+		evaldata.hosts[addr].cur_seqno = addr * 2;
+		evaldata.hosts[addr].payload = eval_payload;
+		evaldata.hosts[addr].payload_len = sizeof(eval_payload);
 		addr++;
 		h = h->next;
 	}
 
 	printf("Evaluating %d hosts.", length);
 	for (i = 0; i < 5; i++) {
-		int maxfd;
 		int h;
 
 		printf(".");
 		fflush(stdout);
 		for (h = 0; h < length; h++) {
-			int sock;
-			struct icmp_packet pkt;
-
-			memcpy(&pkt.peer, &eval_hosts[h].host->sockaddr,
-				eval_hosts[h].host->sockaddr_len);
-			pkt.peer_len = eval_hosts[h].host->sockaddr_len;
-			pkt.type = ICMP_REQUEST;
-			pkt.id = eval_hosts[h].id;
-			pkt.seqno = eval_hosts[h].cur_seqno;
-			pkt.payload = eval_hosts[h].payload;
-			pkt.payload_len = eval_hosts[h].payload_len;
-
-			if (ICMP_ADDRFAMILY(&pkt) == AF_INET) {
-				sock = sockv4;
-			} else {
-				sock = sockv6;
-			}
-
-			if (sock >= 0) {
-				clock_gettime(CLOCK_MONOTONIC_RAW, &eval_hosts[h].sendtime);
-				eval_hosts[h].host->tx_icmp++;
-				icmp_send(sock, &pkt);
-			}
+			clock_gettime(CLOCK_MONOTONIC_RAW, &evaldata.hosts[h].sendtime);
+			evaldata.hosts[h].host->tx_icmp++;
+			net_send(evaldata.hosts[h].host,
+				evaldata.hosts[h].id,
+				evaldata.hosts[h].cur_seqno,
+				evaldata.hosts[h].payload,
+				evaldata.hosts[h].payload_len);
 		}
 
-		maxfd = MAX(sockv4, sockv6);
 		for (;;) {
 			struct timeval tv;
-			fd_set fds;
 			int i;
-
-			FD_ZERO(&fds);
-			if (sockv4 >= 0) FD_SET(sockv4, &fds);
-			if (sockv6 >= 0) FD_SET(sockv6, &fds);
 
 			tv.tv_sec = 1;
 			tv.tv_usec = 0;
-			i = select(maxfd+1, &fds, NULL, NULL, &tv);
-			if (!i) break; /* No action for 1 second, break.. */
-			if ((sockv4 >= 0) && FD_ISSET(sockv4, &fds))
-				read_eval_reply(sockv4, eval_hosts, length);
-			if ((sockv6 >= 0) && FD_ISSET(sockv6, &fds))
-				read_eval_reply(sockv6, eval_hosts, length);
+			i = net_recv(&tv, eval_reply, &evaldata);
+			if (!i)
+				break; /* No action for 1 second, break.. */
 		}
 	}
 	printf(" done.\n");
@@ -268,7 +246,7 @@ int host_evaluate(struct host **hosts, int length, int sockv4, int sockv6)
 		h = next;
 	}
 
-	free(eval_hosts);
+	free(evaldata.hosts);
 	printf("%d of %d hosts responded correctly to all pings", good_hosts, length);
 	if (good_hosts) {
 		printf(" (average RTT %.02f ms)",
@@ -277,3 +255,25 @@ int host_evaluate(struct host **hosts, int length, int sockv4, int sockv6)
 	printf("\n");
 	return good_hosts;
 }
+
+static struct host *hosts_start;
+static struct host *hosts_cur;
+
+void host_use(struct host* hosts)
+{
+	hosts_start = hosts;
+}
+
+/* Return next host.
+ * Emulate a cyclic list of hosts */
+struct host *host_get_next()
+{
+	struct host *h;
+	assert(hosts_start);
+	if (!hosts_cur)
+		hosts_cur = hosts_start;
+	h = hosts_cur;
+	hosts_cur = hosts_cur->next;
+	return h;
+}
+

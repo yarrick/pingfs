@@ -13,11 +13,8 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-// For strdup()
-#define _POSIX_C_SOURCE 200809L
-// For S_IFDIR
-#define _XOPEN_SOURCE
 #include "fs.h"
+
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
