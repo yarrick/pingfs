@@ -5,18 +5,21 @@ pingfs aims to be a filesystem where the data is stored only in the Internet
 itself, as ICMP Echo packets (pings) travelling from you to remote servers and
 back again.
 
-It is be implemented using raw sockets and FUSE, so superuser powers are
-required. Linux is the intended target OS, portability will not be a goal.
+It is implemented using raw sockets and FUSE, so superuser powers are required.
+Linux is the only intended target OS, portability will not be a goal.
 Both IPv4 and IPv6 are supported.
 
-How to start it: (does not do anything fun yet)
-- Compile by running make
+Compile by just running 'make'
+
+How to start it:
 - Create a textfile with hostname and IP addresses to target
 - As root, run ./pingfs <filename> <mountpoint>
   It will resolve all hostnames, and then test each resolved address
   if it responds properly to a number of pings.
   Some statistics will be printed and then the filesystem will be mounted.
-  Very few operations are allowed, and none result in network traffic.
+- Write data to a new file (only one write allowed per file)
+- The first 1kB per file will be sent over and over to remote hosts via ICMP.
+- The data can not yet be read.
 - Stop with ^C, and it should unmount itself.
 - Otherwise unmount with fusermount -u <mountpoint>
 
