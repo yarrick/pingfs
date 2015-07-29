@@ -85,8 +85,10 @@ static void handle_recv(int sock, net_recv_fn_t recv_fn, void *recv_data)
 	len = recvfrom(sock, buf, sizeof(buf), 0,
 		(struct sockaddr *) &mypkt.peer, &mypkt.peer_len);
 	if (len > 0 && icmp_parse(&mypkt, buf, len) == 0) {
-		recv_fn(recv_data, &mypkt.peer, mypkt.peer_len, mypkt.id,
-			mypkt.seqno, mypkt.payload, mypkt.payload_len);
+		if (mypkt.type == ICMP_REPLY) {
+			recv_fn(recv_data, &mypkt.peer, mypkt.peer_len, mypkt.id,
+				mypkt.seqno, mypkt.payload, mypkt.payload_len);
+		}
 		free(mypkt.payload);
 	}
 }
