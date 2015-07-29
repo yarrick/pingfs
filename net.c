@@ -72,6 +72,7 @@ void net_send(struct host *host, uint16_t id, uint16_t seqno, const uint8_t *dat
 	}
 
 	if (sock >= 0) {
+		host->tx_icmp++;
 		icmp_send(sock, &pkt);
 	}
 

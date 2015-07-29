@@ -203,7 +203,6 @@ int host_evaluate(struct host **hosts, int length)
 		fflush(stdout);
 		for (h = 0; h < length; h++) {
 			clock_gettime(CLOCK_MONOTONIC_RAW, &evaldata.hosts[h].sendtime);
-			evaldata.hosts[h].host->tx_icmp++;
 			net_send(evaldata.hosts[h].host,
 				evaldata.hosts[h].id,
 				evaldata.hosts[h].cur_seqno,
