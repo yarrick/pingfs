@@ -179,6 +179,17 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	return 0;
 }
 
+static int fs_open(const char *name, struct fuse_file_info *fileinfo)
+{
+	struct file *f;
+
+	f = find_file(name);
+	if (!f)
+		return -ENOENT;
+
+	return 0;
+}
+
 const struct fuse_operations fs_ops = {
 	.getattr = fs_getattr,
 	.utime = fs_utime,
@@ -187,5 +198,6 @@ const struct fuse_operations fs_ops = {
 	.mknod = fs_mknod,
 	.unlink = fs_unlink,
 	.readdir = fs_readdir,
+	.open = fs_open,
 };
 
