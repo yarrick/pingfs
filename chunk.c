@@ -17,9 +17,25 @@
 #include "host.h"
 #include "net.h"
 
+#include <time.h>
 #include <pthread.h>
+#include <errno.h>
 
-static uint16_t id;
+enum io_owner {
+	OWNER_FS = 1,
+	OWNER_NET = 2,
+};
+
+struct io {
+	pthread_cond_t fs_cond;
+	pthread_cond_t net_cond;
+	pthread_mutex_t mutex;
+	enum io_owner owner;
+	uint8_t *data;
+	size_t len;
+};
+
+static uint16_t icmp_id;
 
 static struct chunk *chunk_head;
 static pthread_mutex_t chunk_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -32,7 +48,7 @@ struct chunk *chunk_create()
 
 	/* TODO can give duplicate ids after some time
 	 * if objects have varying lifetime */
-	c->id = id++;
+	c->id = icmp_id++;
 
 	return c;
 }
@@ -72,8 +88,30 @@ void chunk_remove(struct chunk *c)
 	pthread_mutex_unlock(&chunk_mutex);
 }
 
+static void process_chunk(struct chunk *c, uint8_t *data, size_t len)
+{
+	c->seqno++;
+	if (c->io) {
+		struct io *io = c->io;
+		pthread_mutex_lock(&io->mutex);
+		io->data = data;
+		io->len = len;
+		io->owner = OWNER_FS;
+		pthread_cond_signal(&io->fs_cond);
+		/* Wait while fs thread works, sets owner back and signals */
+		while (io->owner != OWNER_NET)
+			pthread_cond_wait(&io->net_cond, &io->mutex);
+		data = io->data;
+		len = io->len;
+		pthread_mutex_unlock(&io->mutex);
+		free(c->io);
+		c->io = NULL;
+	}
+	net_send(c->host, c->id, c->seqno, data, len);
+}
+
 void chunk_reply(void *userdata, struct sockaddr_storage *addr,
-	size_t addrlen, uint16_t id, uint16_t seqno, const uint8_t *data, size_t len)
+	size_t addrlen, uint16_t id, uint16_t seqno, uint8_t *data, size_t len)
 {
 	struct chunk *c;
 	pthread_mutex_lock(&chunk_mutex);
@@ -82,9 +120,7 @@ void chunk_reply(void *userdata, struct sockaddr_storage *addr,
 		if (c->id == id) {
 			c->host->rx_icmp++;
 			if (len == c->len && seqno == c->seqno) {
-				/* Correct data, send again */
-				c->seqno++;
-				net_send(c->host, id, c->seqno, data, len);
+				process_chunk(c, data, len);
 			}
 			break;
 		}
@@ -93,3 +129,54 @@ void chunk_reply(void *userdata, struct sockaddr_storage *addr,
 	pthread_mutex_unlock(&chunk_mutex);
 }
 
+/* Call from fs thread to wait until chunk arrives or timeout.
+ * When data comes from icmp it is pointed to in data argument,
+ * and the function returns the length of it.
+ * Must call chunk_done() after when done */
+int chunk_wait_for(struct chunk *c, uint8_t **data)
+{
+	pthread_mutex_lock(&chunk_mutex);
+	if (c->io) {
+		pthread_mutex_unlock(&chunk_mutex);
+		return -EBUSY;
+	}
+	c->io = calloc(1, sizeof(struct io));
+	pthread_mutex_unlock(&chunk_mutex);
+	c->io->owner = OWNER_NET;
+	pthread_cond_init(&c->io->fs_cond, NULL);
+	pthread_cond_init(&c->io->net_cond, NULL);
+	pthread_mutex_init(&c->io->mutex, NULL);
+
+	pthread_mutex_lock(&c->io->mutex);
+	while (c->io->owner != OWNER_FS) {
+		int res;
+		struct timespec ts;
+		clock_gettime(CLOCK_REALTIME, &ts);
+		ts.tv_sec += 3;
+		res = pthread_cond_timedwait(&c->io->fs_cond,
+			&c->io->mutex, &ts);
+		if (res) {
+			pthread_mutex_unlock(&c->io->mutex);
+			pthread_mutex_lock(&chunk_mutex);
+			free(c->io);
+			c->io = NULL;
+			pthread_mutex_unlock(&chunk_mutex);
+			return res;
+		}
+	}
+
+	/* Still holding io->mutex here */
+	*data = c->io->data;
+	return c->io->len;
+}
+
+/* Put back new data, let net thread continue */
+void chunk_done(struct chunk *c, uint8_t *data, size_t len)
+{
+	c->io->data = data;
+	c->io->len = len;
+	c->io->owner = OWNER_NET;
+
+	pthread_cond_signal(&c->io->net_cond);
+	pthread_mutex_unlock(&c->io->mutex);
+}

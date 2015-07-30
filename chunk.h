@@ -22,12 +22,15 @@
 
 struct host;
 
+struct io;
+
 struct chunk {
 	/* Link for list of all active chunks */
 	struct chunk *next_active;
 	/* Link for list of chunks in this same file */
 	struct chunk *next_file;
 	struct host *host;
+	struct io *io;
 	uint16_t id;
 	uint16_t seqno;
 	uint16_t len;
@@ -44,5 +47,9 @@ void chunk_remove(struct chunk *c);
 
 /* Handle icmp reply */
 void chunk_reply(void *userdata, struct sockaddr_storage *addr,
-	size_t addrlen, uint16_t id, uint16_t seqno, const uint8_t *data, size_t len);
+	size_t addrlen, uint16_t id, uint16_t seqno, uint8_t *data, size_t len);
+
+/* Ask for chunk from network, put back result */
+int chunk_wait_for(struct chunk *c, uint8_t **data);
+void chunk_done(struct chunk *c, uint8_t *data, size_t len);
 #endif

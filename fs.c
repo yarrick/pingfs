@@ -232,6 +232,41 @@ static int fs_write(const char *name, const char *buf, size_t size,
 	return c->len;
 }
 
+static int fs_read(const char *name, char *buf, size_t size,
+	off_t offset, struct fuse_file_info *fileinfo)
+{
+	struct file *f;
+	struct chunk *c;
+	uint8_t *chunkdata;
+	int len;
+	int clen;
+
+	f = find_file(name);
+	if (!f)
+		return -ENOENT;
+
+	c = f->chunks;
+	while (c && offset > c->len) {
+		offset -= c->len;
+		c = c->next_file;
+	}
+	if (!c) {
+		/* Read out of bounds */
+		return 0;
+	}
+
+	len = MIN(c->len, size) - offset;
+
+	chunkdata = NULL;
+	clen = chunk_wait_for(c, &chunkdata);
+	if (clen <= 0)
+		return clen;
+
+	memcpy(buf, &chunkdata[offset], len);
+	chunk_done(c, chunkdata, clen);
+	return len;
+}
+
 const struct fuse_operations fs_ops = {
 	.getattr = fs_getattr,
 	.utime = fs_utime,
@@ -242,6 +277,7 @@ const struct fuse_operations fs_ops = {
 	.readdir = fs_readdir,
 	.open = fs_open,
 	.write = fs_write,
+	.read = fs_read,
 	.init = fs_init,
 	.destroy = fs_destroy,
 };

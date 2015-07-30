@@ -19,7 +19,8 @@ How to start it:
   Some statistics will be printed and then the filesystem will be mounted.
 - Write data to a new file (only one write allowed per file)
 - The first 1kB per file will be sent over and over to remote hosts via ICMP.
-- The data can not yet be read.
+- Files should be readable. The data is returned as soon as it returns back
+  from the remote host.
 - Stop with ^C, and it should unmount itself.
 - Otherwise unmount with fusermount -u <mountpoint>
 

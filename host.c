@@ -141,7 +141,7 @@ struct evaldata {
 };
 
 static void eval_reply(void *userdata, struct sockaddr_storage *addr,
-	size_t addrlen, uint16_t id, uint16_t seqno, const uint8_t *data, size_t len)
+	size_t addrlen, uint16_t id, uint16_t seqno, uint8_t *data, size_t len)
 {
 	int i;
 	struct evaldata *eval = (struct evaldata *) userdata;
