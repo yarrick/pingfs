@@ -306,8 +306,8 @@ static int fs_read(const char *name, char *buf, size_t size,
 
 	chunkdata = NULL;
 	clen = chunk_wait_for(c, &chunkdata);
-	if (clen <= 0)
-		return clen;
+	if (!clen)
+		return -EIO;
 
 	memcpy(buf, &chunkdata[offset], len);
 	chunk_done(c, chunkdata, clen);

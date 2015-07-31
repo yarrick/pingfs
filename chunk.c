@@ -156,12 +156,13 @@ int chunk_wait_for(struct chunk *c, uint8_t **data)
 		res = pthread_cond_timedwait(&c->io->fs_cond,
 			&c->io->mutex, &ts);
 		if (res) {
+			/* Timeout, data is lost */
 			pthread_mutex_unlock(&c->io->mutex);
 			pthread_mutex_lock(&chunk_mutex);
 			free(c->io);
 			c->io = NULL;
 			pthread_mutex_unlock(&chunk_mutex);
-			return res;
+			return 0;
 		}
 	}
 
