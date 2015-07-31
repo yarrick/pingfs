@@ -226,24 +226,40 @@ static int fs_write(const char *name, const char *buf, size_t size,
 {
 	struct file *f;
 	struct chunk *c;
+	struct chunk *last = NULL;
 
 	f = find_file(name);
 	if (!f)
 		return -ENOENT;
 
-	/* Only one write supported */
-	if (f->chunks)
-		return -ENOTSUP;
+	c = f->chunks;
+	while (c && offset >= c->len) {
+		if (c->len != CHUNK_SIZE) {
+			/* Extend this chunk instead
+			 * of creating new */
+			break;
+		}
+		offset -= c->len;
+		last = c;
+		c = c->next_file;
+	}
+	if (!c) {
+		/* Write to new chunk */
+		c = chunk_create();
+		c->len = MIN(size, CHUNK_SIZE);
+		chunk_add(c);
 
-	c = chunk_create();
-	c->len = MIN(size, CHUNK_SIZE);
-	chunk_add(c);
+		if (last)
+			last->next_file = c;
+		else
+			f->chunks = c;
+		c->host = host_get_next();
+		net_send(c->host, c->id, c->seqno, (const uint8_t *) buf, c->len);
 
-	f->chunks = c;
-	c->host = host_get_next();
-	net_send(c->host, c->id, c->seqno, (const uint8_t *) buf, c->len);
-
-	return c->len;
+		return c->len;
+	}
+	/* Modify/extend existing chunk */
+	return -ENOTSUP;
 }
 
 static int fs_read(const char *name, char *buf, size_t size,
@@ -260,7 +276,7 @@ static int fs_read(const char *name, char *buf, size_t size,
 		return -ENOENT;
 
 	c = f->chunks;
-	while (c && offset > c->len) {
+	while (c && offset >= c->len) {
 		offset -= c->len;
 		c = c->next_file;
 	}
