@@ -49,6 +49,19 @@ static void fs_free(struct file *f)
 	free(f);
 }
 
+static size_t file_size(struct file *f)
+{
+	struct chunk *c;
+	size_t size = 0;
+
+	c = f->chunks;
+	while (c) {
+		size += c->len;
+		c = c->next_file;
+	}
+	return size;
+}
+
 static void *fs_init(struct fuse_conn_info *conn)
 {
 	return net_start_responder();
@@ -153,6 +166,7 @@ static int fs_getattr(const char *name, struct stat *stat)
 		return -ENOENT;
 
 	stat->st_mode = f->mode;
+	stat->st_size = file_size(f);
 	return 0;
 }
 
