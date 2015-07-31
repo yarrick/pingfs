@@ -33,6 +33,10 @@ Unsupported operations
 - Renaming files
 - Creating soft/hard links
 
+Notes:
+The performance is too low right now to handle LAN hosts, it will
+lose data right away. Use pingfs with care.
+
 License:
 
 Copyright (c) 2013-2015 Erik Ekman <yarrick@kryo.se>

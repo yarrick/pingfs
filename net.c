@@ -29,19 +29,35 @@ static int sockv6;
 
 int net_open_sockets()
 {
+	/* 1MB receive buffer per socket */
+	int rcvbuf = 1024*1024;
+
 	// v4 socket will return full IP header
 	sockv4 = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (sockv4 < 0) {
 		perror("Failed to open IPv4 socket");
+	} else {
+		int res = setsockopt(sockv4, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
+		if (res < 0) {
+			perror("Failed to set receive buffer size on IPv4 socket");
+		}
 	}
 
 	// v6 socket will just give ICMPv6 data, no IP header
 	sockv6 = socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 	if (sockv6 >= 0) {
 		struct icmp6_filter filter;
+		int res = setsockopt(sockv4, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
+		if (res < 0) {
+			perror("Failed to set receive buffer size on IPv6 socket");
+		}
+
 		ICMP6_FILTER_SETBLOCKALL(&filter);
 		ICMP6_FILTER_SETPASS(ICMP6_ECHO_REPLY, &filter);
-		setsockopt(sockv6, IPPROTO_ICMPV6, ICMP6_FILTER, &filter, sizeof(filter));
+		res = setsockopt(sockv6, IPPROTO_ICMPV6, ICMP6_FILTER, &filter, sizeof(filter));
+		if (res < 0) {
+			perror("Failed to set ICMP filters on IPv6 socket");
+		}
 	} else {
 		perror("Failed to open IPv6 socket");
 	}
