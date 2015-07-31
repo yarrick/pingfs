@@ -75,8 +75,9 @@ static uint8_t *icmp_encode(struct icmp_packet *pkt, int *len)
 {
 	struct icmp_rule const *rule = GET_RULE(pkt);
 	uint8_t *data;
-	*len = ICMP_MINLEN + pkt->payload_len;
-	data = calloc(1, *len);
+	int pktlen;
+	pktlen = ICMP_MINLEN + pkt->payload_len;
+	data = calloc(1, pktlen);
 
 	if (pkt->type == ICMP_REQUEST) {
 		data[0] = rule->request_type;
@@ -90,9 +91,10 @@ static uint8_t *icmp_encode(struct icmp_packet *pkt, int *len)
 		memcpy(&data[8], pkt->payload, pkt->payload_len);
 
 	if (rule->use_checksum) {
-		write16(&data[2], checksum(data, *len));
+		write16(&data[2], checksum(data, pktlen));
 	}
 
+	*len = pktlen;
 	return data;
 }
 

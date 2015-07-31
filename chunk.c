@@ -88,30 +88,30 @@ void chunk_remove(struct chunk *c)
 	pthread_mutex_unlock(&chunk_mutex);
 }
 
-static void process_chunk(struct chunk *c, uint8_t *data, size_t len)
+static void process_chunk(struct chunk *c, uint8_t **data)
 {
 	c->seqno++;
 	if (c->io) {
 		struct io *io = c->io;
 		pthread_mutex_lock(&io->mutex);
-		io->data = data;
-		io->len = len;
+		io->data = *data;
+		io->len = c->len;
 		io->owner = OWNER_FS;
 		pthread_cond_signal(&io->fs_cond);
 		/* Wait while fs thread works, sets owner back and signals */
 		while (io->owner != OWNER_NET)
 			pthread_cond_wait(&io->net_cond, &io->mutex);
-		data = io->data;
-		len = io->len;
+		*data = io->data;
+		c->len = io->len;
 		pthread_mutex_unlock(&io->mutex);
 		free(c->io);
 		c->io = NULL;
 	}
-	net_send(c->host, c->id, c->seqno, data, len);
+	net_send(c->host, c->id, c->seqno, *data, c->len);
 }
 
 void chunk_reply(void *userdata, struct sockaddr_storage *addr,
-	size_t addrlen, uint16_t id, uint16_t seqno, uint8_t *data, size_t len)
+	size_t addrlen, uint16_t id, uint16_t seqno, uint8_t **data, size_t len)
 {
 	struct chunk *c;
 	pthread_mutex_lock(&chunk_mutex);
@@ -120,7 +120,7 @@ void chunk_reply(void *userdata, struct sockaddr_storage *addr,
 		if (c->id == id) {
 			c->host->rx_icmp++;
 			if (len == c->len && seqno == c->seqno) {
-				process_chunk(c, data, len);
+				process_chunk(c, data);
 			}
 			break;
 		}

@@ -141,7 +141,7 @@ struct evaldata {
 };
 
 static void eval_reply(void *userdata, struct sockaddr_storage *addr,
-	size_t addrlen, uint16_t id, uint16_t seqno, uint8_t *data, size_t len)
+	size_t addrlen, uint16_t id, uint16_t seqno, uint8_t **data, size_t len)
 {
 	int i;
 	struct evaldata *eval = (struct evaldata *) userdata;
@@ -152,7 +152,7 @@ static void eval_reply(void *userdata, struct sockaddr_storage *addr,
 		if (addrlen == eh->host->sockaddr_len &&
 			memcmp(addr, &eh->host->sockaddr, addrlen) == 0 &&
 			eh->payload_len == len &&
-			memcmp(data, eh->payload, eh->payload_len) == 0 &&
+			memcmp(*data, eh->payload, eh->payload_len) == 0 &&
 			eh->id == id &&
 			eh->cur_seqno == seqno) {
 

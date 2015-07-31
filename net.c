@@ -90,7 +90,7 @@ static void handle_recv(int sock, net_recv_fn_t recv_fn, void *recv_data)
 	if (len > 0 && icmp_parse(&mypkt, buf, len) == 0) {
 		if (mypkt.type == ICMP_REPLY) {
 			recv_fn(recv_data, &mypkt.peer, mypkt.peer_len, mypkt.id,
-				mypkt.seqno, mypkt.payload, mypkt.payload_len);
+				mypkt.seqno, &mypkt.payload, mypkt.payload_len);
 		}
 		free(mypkt.payload);
 	}

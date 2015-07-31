@@ -25,17 +25,13 @@ How to stop it:
 Supported operations
 - Creating/removing files
 - Listing files
-- Writing to files
-  Append is allowed if previous write was even 1024 bytes long.
-  Modification of data is not possible.
-- Reading files
+- Reading/writing files
 
 Unsupported operations
 - Creating/removing directories
 - Truncating files
 - Renaming files
-- Linking files
-- Modifying written data
+- Creating soft/hard links
 
 License:
 

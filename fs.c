@@ -227,6 +227,9 @@ static int fs_write(const char *name, const char *buf, size_t size,
 	struct file *f;
 	struct chunk *c;
 	struct chunk *last = NULL;
+	uint8_t *chunkdata;
+	int len;
+	int clen;
 
 	f = find_file(name);
 	if (!f)
@@ -259,7 +262,21 @@ static int fs_write(const char *name, const char *buf, size_t size,
 		return c->len;
 	}
 	/* Modify/extend existing chunk */
-	return -ENOTSUP;
+
+	chunkdata = NULL;
+	clen = chunk_wait_for(c, &chunkdata);
+	if (clen <= 0)
+		return clen;
+
+	/* New chunk length */
+	clen = MIN(CHUNK_SIZE, size + offset);
+	/* Number of bytes to write */
+	len = MIN(clen - offset, size);
+
+	chunkdata = realloc(chunkdata, clen);
+	memcpy(&chunkdata[offset], buf, len);
+	chunk_done(c, chunkdata, clen);
+	return len;
 }
 
 static int fs_read(const char *name, char *buf, size_t size,
@@ -285,7 +302,7 @@ static int fs_read(const char *name, char *buf, size_t size,
 		return 0;
 	}
 
-	len = MIN(c->len, size) - offset;
+	len = MIN(c->len - offset, size);
 
 	chunkdata = NULL;
 	clen = chunk_wait_for(c, &chunkdata);

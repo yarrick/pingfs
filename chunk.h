@@ -47,7 +47,7 @@ void chunk_remove(struct chunk *c);
 
 /* Handle icmp reply */
 void chunk_reply(void *userdata, struct sockaddr_storage *addr,
-	size_t addrlen, uint16_t id, uint16_t seqno, uint8_t *data, size_t len);
+	size_t addrlen, uint16_t id, uint16_t seqno, uint8_t **data, size_t len);
 
 /* Ask for chunk from network, put back result */
 int chunk_wait_for(struct chunk *c, uint8_t **data);
