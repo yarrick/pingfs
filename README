@@ -1,13 +1,13 @@
 pingfs - "True cloud storage"
 	by Erik Ekman <erik@kryo.se>
 
-pingfs aims to be a filesystem where the data is stored only in the Internet
-itself, as ICMP Echo packets (pings) travelling from you to remote servers and
+pingfs is a filesystem where the data is stored only in the Internet itself,
+as ICMP Echo packets (pings) travelling from you to remote servers and
 back again.
 
 It is implemented using raw sockets and FUSE, so superuser powers are required.
-Linux is the only intended target OS, portability will not be a goal.
-Both IPv4 and IPv6 are supported.
+Linux is the only intended target OS, portability is not a goal.
+Both IPv4 and IPv6 remote hosts are supported.
 
 Compile by just running 'make'
 
@@ -17,12 +17,25 @@ How to start it:
   It will resolve all hostnames, and then test each resolved address
   if it responds properly to a number of pings.
   Some statistics will be printed and then the filesystem will be mounted.
-- Write data to a new file (only one write allowed per file)
-- The first 1kB per file will be sent over and over to remote hosts via ICMP.
-- Files should be readable. The data is returned as soon as it returns back
-  from the remote host.
+
+How to stop it:
 - Stop with ^C, and it should unmount itself.
 - Otherwise unmount with fusermount -u <mountpoint>
+
+Supported operations
+- Creating/removing files
+- Listing files
+- Writing to files
+  Append is allowed if previous write was even 1024 bytes long.
+  Modification of data is not possible.
+- Reading files
+
+Unsupported operations
+- Creating/removing directories
+- Truncating files
+- Renaming files
+- Linking files
+- Modifying written data
 
 License:
 
