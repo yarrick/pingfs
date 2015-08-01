@@ -24,6 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/param.h>
+#include <assert.h>
 
 struct file {
 	struct file *next;
@@ -221,19 +222,14 @@ static int fs_open(const char *name, struct fuse_file_info *fileinfo)
 	return 0;
 }
 
-static int fs_write(const char *name, const char *buf, size_t size,
-	off_t offset, struct fuse_file_info *fileinfo)
+static int fs_inner_write(struct file *f, const char *buf, size_t size,
+	off_t offset)
 {
-	struct file *f;
 	struct chunk *c;
 	struct chunk *last = NULL;
 	uint8_t *chunkdata;
 	int len;
 	int clen;
-
-	f = find_file(name);
-	if (!f)
-		return -ENOENT;
 
 	c = f->chunks;
 	while (c && offset >= c->len) {
@@ -279,6 +275,18 @@ static int fs_write(const char *name, const char *buf, size_t size,
 	return len;
 }
 
+static int fs_write(const char *name, const char *buf, size_t size,
+	off_t offset, struct fuse_file_info *fileinfo)
+{
+	struct file *f;
+
+	f = find_file(name);
+	if (!f)
+		return -ENOENT;
+
+	return fs_inner_write(f, buf, size, offset);
+}
+
 static int fs_read(const char *name, char *buf, size_t size,
 	off_t offset, struct fuse_file_info *fileinfo)
 {
@@ -314,6 +322,78 @@ static int fs_read(const char *name, char *buf, size_t size,
 	return len;
 }
 
+static int shrink_file(struct file *f, off_t length)
+{
+	struct chunk *c = f->chunks;
+	struct chunk *prev = NULL;
+	while (c->len <= length) {
+		length -= c->len;
+		prev = c;
+		c = c->next_file;
+	}
+	if (!length) {
+		if (prev)
+			prev->next_file = NULL;
+		else
+			f->chunks = NULL;
+	}
+	while (c) {
+		struct chunk *next = c->next_file;
+		if (length) {
+			uint8_t *cdata;
+			int clen;
+			clen = chunk_wait_for(c, &cdata);
+			if (!clen)
+				return -EIO;
+			chunk_done(c, cdata, length);
+			c->next_file = NULL;
+			length = 0;
+		} else {
+			chunk_remove(c);
+			chunk_free(c);
+		}
+		c = next;
+	}
+	return 0;
+}
+
+static int grow_file(struct file *f, off_t length)
+{
+	int offset = file_size(f);
+	int to_grow = length - offset;
+	char zerobuf[CHUNK_SIZE];
+
+	memset(zerobuf, 0, sizeof(zerobuf));
+	while (to_grow) {
+		int res = fs_inner_write(f, zerobuf, MIN(to_grow, CHUNK_SIZE), offset);
+		if (res < 0) {
+			return res;
+		}
+		assert(res);
+		offset += res;
+		to_grow -= res;
+	}
+	return 0;
+}
+
+static int fs_truncate(const char *name, off_t length)
+{
+	struct file *f;
+	int cur_size;
+
+	f = find_file(name);
+	if (!f)
+		return -ENOENT;
+
+	cur_size = file_size(f);
+	if (length > cur_size)
+		return grow_file(f, length);
+	if (length < cur_size) {
+		return shrink_file(f, length);
+	}
+	return 0;
+}
+
 const struct fuse_operations fs_ops = {
 	.getattr = fs_getattr,
 	.utime = fs_utime,
@@ -325,6 +405,7 @@ const struct fuse_operations fs_ops = {
 	.open = fs_open,
 	.write = fs_write,
 	.read = fs_read,
+	.truncate = fs_truncate,
 	.init = fs_init,
 	.destroy = fs_destroy,
 };

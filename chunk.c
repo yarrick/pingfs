@@ -108,7 +108,6 @@ static void process_chunk(struct chunk *c, uint8_t **data)
 		while (io->owner != OWNER_NET)
 			pthread_cond_wait(&io->net_cond, &io->mutex);
 		*data = io->data;
-		c->len = io->len;
 		pthread_mutex_unlock(&io->mutex);
 		free(c->io);
 		c->io = NULL;
@@ -182,6 +181,7 @@ void chunk_done(struct chunk *c, uint8_t *data, size_t len)
 {
 	c->io->data = data;
 	c->io->len = len;
+	c->len = c->io->len;
 	c->io->owner = OWNER_NET;
 
 	pthread_cond_signal(&c->io->net_cond);

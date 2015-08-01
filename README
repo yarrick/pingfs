@@ -25,13 +25,13 @@ How to stop it:
 Supported operations
 - Creating/removing files
 - Listing files
-- Reading/writing files
+- Reading/writing/truncating files
 
 Unsupported operations
 - Creating/removing directories
-- Truncating files
 - Renaming files
 - Creating soft/hard links
+- Timestamps (they are always 0)
 
 Notes:
 The performance is too low right now to handle LAN hosts, it will
