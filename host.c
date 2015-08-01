@@ -173,7 +173,7 @@ int host_evaluate(struct host **hosts, int length, int timeout)
 	int i;
 	int addr;
 	int good_hosts;
-	struct host *h;
+	struct host *host;
 	struct host *prev;
 	struct evaldata evaldata;
 	uint8_t eval_payload[CHUNK_SIZE];
@@ -186,15 +186,15 @@ int host_evaluate(struct host **hosts, int length, int timeout)
 	}
 
 	addr = 0;
-	h = *hosts;
+	host = *hosts;
 	for (i = 0; i < length; i++) {
-		evaldata.hosts[addr].host = h;
+		evaldata.hosts[addr].host = host;
 		evaldata.hosts[addr].id = addr;
 		evaldata.hosts[addr].cur_seqno = addr * 2;
 		evaldata.hosts[addr].payload = eval_payload;
 		evaldata.hosts[addr].payload_len = sizeof(eval_payload);
 		addr++;
-		h = h->next;
+		host = host->next;
 	}
 
 	printf("Evaluating %d hosts (timeout=%ds).", length, timeout);
@@ -233,16 +233,16 @@ int host_evaluate(struct host **hosts, int length, int timeout)
 	}
 	printf(" done.\n");
 
-	h = *hosts;
+	host = *hosts;
 	prev = NULL;
 	good_hosts = 0;
-	while (h) {
-		struct host *next = h->next;
+	while (host) {
+		struct host *next = host->next;
 		/* Filter out non-100% hosts from list */
-		if (h->tx_icmp == 0 ||
-			h->tx_icmp != h->rx_icmp) {
+		if (host->tx_icmp == 0 ||
+			host->tx_icmp != host->rx_icmp) {
 
-			struct host *host = h;
+			struct host *host = host;
 			if (host == *hosts)
 				*hosts = next;
 			if (prev)
@@ -251,9 +251,9 @@ int host_evaluate(struct host **hosts, int length, int timeout)
 
 		} else {
 			good_hosts++;
-			prev = h;
+			prev = host;
 		}
-		h = next;
+		host = next;
 	}
 
 	free(evaldata.hosts);
