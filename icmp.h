@@ -39,7 +39,7 @@ struct icmp_packet {
 
 extern int icmp_parse(struct icmp_packet *pkt, uint8_t *data, int len);
 extern void icmp_dump(struct icmp_packet *pkt);
-extern void icmp_send(int socket, struct icmp_packet *pkt);
+extern int icmp_send(int socket, struct icmp_packet *pkt);
 
 #endif
 

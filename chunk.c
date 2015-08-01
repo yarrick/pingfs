@@ -123,7 +123,7 @@ void chunk_reply(void *userdata, struct sockaddr_storage *addr,
 	c = chunk_head;
 	while (c) {
 		if (c->id == id) {
-			c->host->rx_icmp++;
+			net_inc_rx(len);
 			if (len == c->len && seqno == c->seqno) {
 				process_chunk(c, data);
 			}

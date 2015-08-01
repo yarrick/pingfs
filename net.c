@@ -27,6 +27,36 @@
 static int sockv4;
 static int sockv6;
 
+struct pkt_stats {
+	long long unsigned int packets;
+	long long unsigned int bytes;
+};
+
+struct net_data {
+	pthread_t responder;
+	pthread_mutex_t stats_mutex;
+	struct pkt_stats tx;
+	struct pkt_stats rx;
+} netdata;
+
+static void inc_stats(struct pkt_stats *stats, int packetsize)
+{
+	pthread_mutex_lock(&netdata.stats_mutex);
+	stats->packets++;
+	stats->bytes += packetsize;
+	pthread_mutex_unlock(&netdata.stats_mutex);
+}
+
+static void net_inc_tx(int packetsize)
+{
+	inc_stats(&netdata.tx, packetsize);
+}
+
+void net_inc_rx(int packetsize)
+{
+	inc_stats(&netdata.rx, packetsize);
+}
+
 int net_open_sockets()
 {
 	/* 1MB receive buffer per socket */
@@ -88,7 +118,7 @@ void net_send(struct host *host, uint16_t id, uint16_t seqno, const uint8_t *dat
 	}
 
 	if (sock >= 0) {
-		host->tx_icmp++;
+		net_inc_tx(pkt.payload_len);
 		icmp_send(sock, &pkt);
 	}
 
@@ -142,17 +172,24 @@ static void *responder_thread(void *arg)
 	return NULL;
 }
 
-void *net_start_responder()
+void net_start()
 {
-	pthread_t *thread = malloc(sizeof(pthread_t));
-	pthread_create(thread, NULL, responder_thread, NULL);
-	return thread;
+	memset(&netdata, 0, sizeof(netdata));
+	pthread_create(&netdata.responder, NULL, responder_thread, NULL);
+	pthread_mutex_init(&netdata.stats_mutex, NULL);
 }
 
-void net_stop_responder(void *data)
+void net_stop()
 {
-	pthread_t *thread = (pthread_t *) data;
-	pthread_cancel(*thread);
-	pthread_join(*thread, NULL);
-	free(thread);
+	pthread_cancel(netdata.responder);
+	pthread_join(netdata.responder, NULL);
+
+	pthread_mutex_lock(&netdata.stats_mutex);
+	printf("\nTotal network resources consumed:\n"
+		"in:  %10llu packets, %10llu bytes\n"
+		"out: %10llu packets, %10llu bytes\n",
+		netdata.rx.packets, netdata.rx.bytes,
+		netdata.tx.packets, netdata.tx.bytes
+	);
+	pthread_mutex_unlock(&netdata.stats_mutex);
 }

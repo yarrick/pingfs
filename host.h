@@ -23,8 +23,6 @@
 
 struct host {
 	struct host *next;
-	unsigned long tx_icmp;
-	unsigned long rx_icmp;
 	struct sockaddr_storage sockaddr;
 	socklen_t sockaddr_len;
 };

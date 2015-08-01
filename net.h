@@ -28,7 +28,9 @@ typedef void (*net_recv_fn_t)(void *userdata, struct sockaddr_storage *addr,
 
 int net_recv(struct timeval *tv, net_recv_fn_t recv_fn, void *recv_data);
 
-void *net_start_responder();
-void net_stop_responder(void *data);
+void net_inc_rx(int packetsize);
+
+void net_start();
+void net_stop();
 #endif
 

@@ -98,7 +98,7 @@ static uint8_t *icmp_encode(struct icmp_packet *pkt, int *len)
 	return data;
 }
 
-void icmp_send(int socket, struct icmp_packet *pkt)
+int icmp_send(int socket, struct icmp_packet *pkt)
 {
 	int len;
 	uint8_t *icmpdata = icmp_encode(pkt, &len);
@@ -106,6 +106,7 @@ void icmp_send(int socket, struct icmp_packet *pkt)
 	len = sendto(socket, icmpdata, len, 0, (struct sockaddr *) &pkt->peer, pkt->peer_len);
 
 	free(icmpdata);
+	return len;
 }
 
 int icmp_parse(struct icmp_packet *pkt, uint8_t *data, int len)

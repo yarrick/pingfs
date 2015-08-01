@@ -65,14 +65,15 @@ static size_t file_size(struct file *f)
 
 static void *fs_init(struct fuse_conn_info *conn)
 {
-	return net_start_responder();
+	net_start();
+	return NULL;
 }
 
 static void fs_destroy(void *data)
 {
 	struct file *f;
 
-	net_stop_responder(data);
+	net_stop();
 	f = files;
 	while (f) {
 		struct file *next = f->next;
