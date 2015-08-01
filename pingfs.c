@@ -22,23 +22,29 @@
 #include "host.h"
 #include "fs.h"
 #include "net.h"
+#include "chunk.h"
 
 #include <arpa/inet.h>
+
+#define DEFAULT_TIMEOUT_S 1
 
 struct arginfo {
 	char *hostfile;
 	char *mountpoint;
 	int num_args;
+	int timeout;
 };
 
 enum {
 	KEY_HELP,
 	KEY_ASUSER,
+	KEY_TIMEOUT,
 };
 
 static const struct fuse_opt pingfs_opts[] = {
 	FUSE_OPT_KEY("-h",  KEY_HELP),
 	FUSE_OPT_KEY("-u ", KEY_ASUSER),
+	FUSE_OPT_KEY("-t ", KEY_TIMEOUT),
 	FUSE_OPT_END,
 };
 
@@ -109,13 +115,16 @@ static void print_usage(char *progname)
 	fprintf(stderr, "Usage: %s [options] hostfile mountpoint\n"
 		"Options:\n"
 		" -h           : Print this help and exit\n"
-		" -u username  : Mount the filesystem as this user\n", progname);
+		" -u username  : Mount the filesystem as this user\n"
+		" -t timeout   : Max time to wait for icmp reply "
+			"(seconds, default 1)\n", progname);
 }
 
 static int pingfs_opt_proc(void *data, const char *arg, int key, struct fuse_args *outargs)
 {
 	struct arginfo *arginfo = (struct arginfo *) data;
 	struct passwd *pw;
+	int res;
 
 	switch (key) {
 	case FUSE_OPT_KEY_NONOPT:
@@ -144,6 +153,15 @@ static int pingfs_opt_proc(void *data, const char *arg, int key, struct fuse_arg
 			exit(1);
 		}
 		break;
+	case KEY_TIMEOUT:
+		res = sscanf(arg, "-t%d", &arginfo->timeout);
+		if (res == 1 && arginfo->timeout > 0 && arginfo->timeout < 60) {
+			return 0;
+		} else {
+			fprintf(stderr, "Bad timeout given! Exiting\n");
+			print_usage(outargs->argv[0]);
+			exit(1);
+		}
 	}
 	return 1;
 }
@@ -161,6 +179,7 @@ int main(int argc, char **argv)
 	int res;
 
 	memset(&arginfo, 0, sizeof(arginfo));
+	arginfo.timeout = DEFAULT_TIMEOUT_S;
 	if (fuse_opt_parse(&args, &arginfo, pingfs_opts, pingfs_opt_proc) == -1) {
 		fprintf(stderr, "Error parsing options!\n");
 		print_usage(argv[0]);
@@ -201,11 +220,13 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	host_count = host_evaluate(&hosts, host_count);
+	host_count = host_evaluate(&hosts, host_count, arginfo.timeout);
 	if (!host_count) {
 		fprintf(stderr, "No host passed the test\n");
 		return EXIT_FAILURE;
 	}
+
+	chunk_set_timeout(arginfo.timeout);
 
 	host_use(hosts);
 

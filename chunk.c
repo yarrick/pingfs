@@ -36,9 +36,15 @@ struct io {
 };
 
 static uint16_t icmp_id;
+static int timeout;
 
 static struct chunk *chunk_head;
 static pthread_mutex_t chunk_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void chunk_set_timeout(int t)
+{
+	timeout = t;
+}
 
 struct chunk *chunk_create()
 {
@@ -152,7 +158,7 @@ int chunk_wait_for(struct chunk *c, uint8_t **data)
 		int res;
 		struct timespec ts;
 		clock_gettime(CLOCK_REALTIME, &ts);
-		ts.tv_sec += 3;
+		ts.tv_sec += timeout;
 		res = pthread_cond_timedwait(&c->io->fs_cond,
 			&c->io->mutex, &ts);
 		if (res) {

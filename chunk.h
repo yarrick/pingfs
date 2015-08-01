@@ -36,6 +36,9 @@ struct chunk {
 	uint16_t len;
 };
 
+/* Set timeout (seconds) waiting for packets */
+void chunk_set_timeout(int t);
+
 /* Allocate chunk and give it id and seqno */
 struct chunk *chunk_create();
 

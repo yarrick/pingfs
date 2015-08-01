@@ -168,7 +168,7 @@ static void eval_reply(void *userdata, struct sockaddr_storage *addr,
 	}
 }
 
-int host_evaluate(struct host **hosts, int length)
+int host_evaluate(struct host **hosts, int length, int timeout)
 {
 	int i;
 	int addr;
@@ -197,7 +197,7 @@ int host_evaluate(struct host **hosts, int length)
 		h = h->next;
 	}
 
-	printf("Evaluating %d hosts.", length);
+	printf("Evaluating %d hosts (timeout=%ds).", length, timeout);
 	for (i = 0; i < 5; i++) {
 		int h;
 		struct timeval tv;
@@ -214,7 +214,7 @@ int host_evaluate(struct host **hosts, int length)
 				evaldata.hosts[h].payload_len);
 		}
 
-		tv.tv_sec = 1;
+		tv.tv_sec = timeout;
 		tv.tv_usec = 0;
 		for (;;) {
 			int alldone = 1;
