@@ -39,6 +39,8 @@ struct eval_host {
 	uint8_t *payload;
 	size_t payload_len;
 	int done;
+	int num_tx;
+	int num_rx;
 };
 
 static const struct addrinfo addr_request = {
@@ -158,7 +160,7 @@ static void eval_reply(void *userdata, struct sockaddr_storage *addr,
 			eh->cur_seqno == seqno) {
 
 			/* Store accepted reply */
-			eh->host->rx_icmp++;
+			eh->num_rx++;
 			eh->done = 1;
 			/* Use new seqno for next packet */
 			eh->cur_seqno++;
@@ -205,13 +207,12 @@ int host_evaluate(struct host **hosts, int length, int timeout)
 		printf(".");
 		fflush(stdout);
 		for (h = 0; h < length; h++) {
-			clock_gettime(CLOCK_MONOTONIC_RAW, &evaldata.hosts[h].sendtime);
-			evaldata.hosts[h].done = 0;
-			net_send(evaldata.hosts[h].host,
-				evaldata.hosts[h].id,
-				evaldata.hosts[h].cur_seqno,
-				evaldata.hosts[h].payload,
-				evaldata.hosts[h].payload_len);
+			struct eval_host *eh = &evaldata.hosts[h];
+			clock_gettime(CLOCK_MONOTONIC_RAW, &eh->sendtime);
+			eh->done = 0;
+			eh->num_tx++;
+			net_send(eh->host, eh->id, eh->cur_seqno,
+				eh->payload, eh->payload_len);
 		}
 
 		tv.tv_sec = timeout;
@@ -233,15 +234,26 @@ int host_evaluate(struct host **hosts, int length, int timeout)
 	}
 	printf(" done.\n");
 
+	good_hosts = 0;
+	for (i = 0; i < length; i++) {
+		struct eval_host *eh = &evaldata.hosts[i];
+		/* Filter out hosts with below 100% result */
+		if (eh->num_tx == 0 ||
+			eh->num_tx != eh->num_rx) {
+
+			/* Mark host for deletion */
+			eh->host->sockaddr_len = 0;
+		} else {
+			good_hosts++;
+		}
+	}
+
 	host = *hosts;
 	prev = NULL;
-	good_hosts = 0;
 	while (host) {
 		struct host *next = host->next;
-		/* Filter out non-100% hosts from list */
-		if (host->tx_icmp == 0 ||
-			host->tx_icmp != host->rx_icmp) {
-
+		/* Remove bad hosts from list */
+		if (host->sockaddr_len == 0) {
 			if (host == *hosts)
 				*hosts = next;
 			if (prev)
@@ -249,7 +261,6 @@ int host_evaluate(struct host **hosts, int length, int timeout)
 			free(host);
 
 		} else {
-			good_hosts++;
 			prev = host;
 		}
 		host = next;
