@@ -218,7 +218,7 @@ int host_evaluate(struct host **hosts, int length, int timeout)
 		tv.tv_usec = 0;
 		for (;;) {
 			int alldone = 1;
-			int i;
+			int res;
 
 			for (h = 0; h < length; h++) {
 				alldone &= evaldata.hosts[h].done;
@@ -226,8 +226,8 @@ int host_evaluate(struct host **hosts, int length, int timeout)
 			if (alldone) /* All hosts have replied */
 				break;
 
-			i = net_recv(&tv, eval_reply, &evaldata);
-			if (!i) /* Timeout, give up */
+			res = net_recv(&tv, eval_reply, &evaldata);
+			if (!res) /* Timeout, give up */
 				break;
 		}
 	}
@@ -242,7 +242,6 @@ int host_evaluate(struct host **hosts, int length, int timeout)
 		if (host->tx_icmp == 0 ||
 			host->tx_icmp != host->rx_icmp) {
 
-			struct host *host = host;
 			if (host == *hosts)
 				*hosts = next;
 			if (prev)
