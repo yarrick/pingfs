@@ -38,6 +38,7 @@ struct eval_host {
 	uint16_t id;
 	uint8_t *payload;
 	size_t payload_len;
+	int done;
 };
 
 static const struct addrinfo addr_request = {
@@ -158,6 +159,7 @@ static void eval_reply(void *userdata, struct sockaddr_storage *addr,
 
 			/* Store accepted reply */
 			eh->host->rx_icmp++;
+			eh->done = 1;
 			/* Use new seqno for next packet */
 			eh->cur_seqno++;
 			diff_add(&eh->sendtime, &recvtime);
@@ -203,6 +205,7 @@ int host_evaluate(struct host **hosts, int length)
 		fflush(stdout);
 		for (h = 0; h < length; h++) {
 			clock_gettime(CLOCK_MONOTONIC_RAW, &evaldata.hosts[h].sendtime);
+			evaldata.hosts[h].done = 0;
 			net_send(evaldata.hosts[h].host,
 				evaldata.hosts[h].id,
 				evaldata.hosts[h].cur_seqno,
@@ -211,14 +214,21 @@ int host_evaluate(struct host **hosts, int length)
 		}
 
 		for (;;) {
+			int alldone = 1;
 			struct timeval tv;
 			int i;
+
+			for (h = 0; h < length; h++) {
+				alldone &= evaldata.hosts[h].done;
+			}
+			if (alldone) /* All hosts have replied */
+				break;
 
 			tv.tv_sec = 1;
 			tv.tv_usec = 0;
 			i = net_recv(&tv, eval_reply, &evaldata);
-			if (!i)
-				break; /* No action for 1 second, break.. */
+			if (!i) /* No action for 1 second, give up */
+				break;
 		}
 	}
 	printf(" done.\n");
