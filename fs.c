@@ -394,6 +394,20 @@ static int fs_truncate(const char *name, off_t length)
 	return 0;
 }
 
+static int fs_rename(const char *name, const char *newname)
+{
+	struct file *f;
+
+	f = find_file(name);
+	if (!f)
+		return -ENOENT;
+
+	free((void*) f->name);
+	f->name = strdup(newname);
+
+	return 0;
+}
+
 const struct fuse_operations fs_ops = {
 	.getattr = fs_getattr,
 	.utime = fs_utime,
@@ -406,6 +420,7 @@ const struct fuse_operations fs_ops = {
 	.write = fs_write,
 	.read = fs_read,
 	.truncate = fs_truncate,
+	.rename = fs_rename,
 	.init = fs_init,
 	.destroy = fs_destroy,
 };

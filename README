@@ -25,11 +25,11 @@ How to stop it:
 Supported operations
 - Creating/removing files
 - Listing files
+- Renaming files
 - Reading/writing/truncating files
 
 Unsupported operations
 - Creating/removing directories
-- Renaming files
 - Creating soft/hard links
 - Timestamps (they are always 0)
 
