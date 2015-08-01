@@ -23,10 +23,11 @@ How to stop it:
 - Otherwise unmount with fusermount -u <mountpoint>
 
 Supported operations
-- Creating/removing files
+- Creating/removing normal files
 - Listing files
 - Renaming files
 - Reading/writing/truncating files
+- Setting/getting file permissions
 
 Unsupported operations
 - Creating/removing directories
