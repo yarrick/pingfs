@@ -233,6 +233,9 @@ int main(int argc, char **argv)
 	/* Always run FUSE in foreground */
 	fuse_opt_add_arg(&args, "-f");
 
+	/* Run FUSE single threaded */
+	fuse_opt_add_arg(&args, "-s");
+
 	/* Default permissions handling, allow all users
 	 * Directory is 775 so only root can use it anyway */
 	fuse_opt_add_arg(&args, "-odefault_permissions,allow_other");
