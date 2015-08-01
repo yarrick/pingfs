@@ -200,6 +200,7 @@ int host_evaluate(struct host **hosts, int length)
 	printf("Evaluating %d hosts.", length);
 	for (i = 0; i < 5; i++) {
 		int h;
+		struct timeval tv;
 
 		printf(".");
 		fflush(stdout);
@@ -213,9 +214,10 @@ int host_evaluate(struct host **hosts, int length)
 				evaldata.hosts[h].payload_len);
 		}
 
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 		for (;;) {
 			int alldone = 1;
-			struct timeval tv;
 			int i;
 
 			for (h = 0; h < length; h++) {
@@ -224,10 +226,8 @@ int host_evaluate(struct host **hosts, int length)
 			if (alldone) /* All hosts have replied */
 				break;
 
-			tv.tv_sec = 1;
-			tv.tv_usec = 0;
 			i = net_recv(&tv, eval_reply, &evaldata);
-			if (!i) /* No action for 1 second, give up */
+			if (!i) /* Timeout, give up */
 				break;
 		}
 	}
