@@ -43,7 +43,7 @@ static void inc_stats(struct pkt_stats *stats, int packetsize)
 {
 	pthread_mutex_lock(&netdata.stats_mutex);
 	stats->packets++;
-	stats->bytes += packetsize;
+	stats->bytes += packetsize + ICMP_HDRLEN;
 	pthread_mutex_unlock(&netdata.stats_mutex);
 }
 

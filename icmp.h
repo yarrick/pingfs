@@ -22,6 +22,8 @@
 
 #define ICMP_ADDRFAMILY(pkt) ((pkt)->peer.ss_family)
 
+#define ICMP_HDRLEN 8
+
 enum icmp_type {
 	ICMP_REQUEST,
 	ICMP_REPLY,
