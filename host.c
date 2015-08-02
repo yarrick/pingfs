@@ -162,6 +162,7 @@ static void eval_reply(void *userdata, struct sockaddr_storage *addr,
 			/* Store accepted reply */
 			eh->num_rx++;
 			eh->done = 1;
+			net_inc_rx(eh->payload_len);
 			/* Use new seqno for next packet */
 			eh->cur_seqno++;
 			diff_add(&eh->sendtime, &recvtime);

@@ -32,8 +32,9 @@ struct pkt_stats {
 	long long unsigned int bytes;
 };
 
-struct net_data {
+static struct net_data {
 	pthread_t responder;
+	pthread_t status;
 	pthread_mutex_t stats_mutex;
 	struct pkt_stats tx;
 	struct pkt_stats rx;
@@ -172,22 +173,89 @@ static void *responder_thread(void *arg)
 	return NULL;
 }
 
+static void get_stats(struct pkt_stats *rx, struct pkt_stats *tx)
+{
+	pthread_mutex_lock(&netdata.stats_mutex);
+	memcpy(rx, &netdata.rx, sizeof(netdata.rx));
+	memcpy(tx, &netdata.tx, sizeof(netdata.tx));
+	pthread_mutex_unlock(&netdata.stats_mutex);
+}
+
+static float format_bytes(unsigned long long bytes, const char **suffix)
+{
+	const char *suffixes[] = {
+		"B",
+		"kB",
+		"MB",
+		"GB",
+		NULL,
+	};
+	int i = 0;
+	float bps = (float) bytes;
+
+	while (suffixes[i + 1] && bps > 1300) {
+		bps /= 1000.0f;
+		i++;
+	}
+
+	*suffix = suffixes[i];
+
+	return bps;
+}
+
+static void diff_stats(struct pkt_stats *new, struct pkt_stats *old)
+{
+	struct pkt_stats diff;
+	float bytes;
+	const char *byte_suffix;
+	diff.packets = new->packets - old->packets;
+	diff.bytes = new->bytes - old->bytes;
+	memcpy(old, new, sizeof(*old));
+	bytes = format_bytes(diff.bytes, &byte_suffix);
+	printf("%6llu pkt/s, %7.01f %2s/s", diff.packets, bytes, byte_suffix);
+}
+
+static void *status_thread(void *arg)
+{
+	const struct timespec status_sleep = {
+		.tv_sec = 1,
+		.tv_nsec = 0,
+	};
+	static struct pkt_stats prev_rx, prev_tx;
+	get_stats(&prev_rx, &prev_tx);
+	nanosleep(&status_sleep, NULL);
+	for (;;) {
+		struct pkt_stats rx, tx;
+		get_stats(&rx, &tx);
+		printf("\rICMP in: ");
+		diff_stats(&rx, &prev_rx);
+		printf("    IMCP out: ");
+		diff_stats(&tx, &prev_tx);
+		fflush(stdout);
+		nanosleep(&status_sleep, NULL);
+	}
+	return NULL;
+}
+
 void net_start()
 {
-	memset(&netdata, 0, sizeof(netdata));
-	pthread_create(&netdata.responder, NULL, responder_thread, NULL);
 	pthread_mutex_init(&netdata.stats_mutex, NULL);
+	pthread_create(&netdata.responder, NULL, responder_thread, NULL);
+	pthread_create(&netdata.status, NULL, status_thread, NULL);
 }
 
 void net_stop()
 {
 	pthread_cancel(netdata.responder);
 	pthread_join(netdata.responder, NULL);
+	pthread_cancel(netdata.status);
+	pthread_join(netdata.status, NULL);
 
 	pthread_mutex_lock(&netdata.stats_mutex);
-	printf("\nTotal network resources consumed:\n"
+	printf("\n\nTotal network resources consumed:\n"
 		"in:  %10llu packets, %10llu bytes\n"
-		"out: %10llu packets, %10llu bytes\n",
+		"out: %10llu packets, %10llu bytes\n"
+		" (bytes counted above IP level)\n",
 		netdata.rx.packets, netdata.rx.bytes,
 		netdata.tx.packets, netdata.tx.bytes
 	);

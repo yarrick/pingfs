@@ -17,6 +17,8 @@ How to start it:
   It will resolve all hostnames, and then test each resolved address
   if it responds properly to a number of pings.
   Some statistics will be printed and then the filesystem will be mounted.
+- Pingfs will stay in the foreground and print stats on packets and bytes
+  each second.
 
 How to stop it:
 - Stop with ^C, and it should unmount itself.
