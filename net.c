@@ -229,7 +229,7 @@ static void *status_thread(void *arg)
 		get_stats(&rx, &tx);
 		printf("\rICMP in: ");
 		diff_stats(&rx, &prev_rx);
-		printf("    IMCP out: ");
+		printf("    ICMP out: ");
 		diff_stats(&tx, &prev_tx);
 		fflush(stdout);
 		nanosleep(&status_sleep, NULL);
