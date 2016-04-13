@@ -78,7 +78,7 @@ int net_open_sockets()
 	sockv6 = socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 	if (sockv6 >= 0) {
 		struct icmp6_filter filter;
-		int res = setsockopt(sockv4, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
+		int res = setsockopt(sockv6, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
 		if (res < 0) {
 			perror("Failed to set receive buffer size on IPv6 socket");
 		}
