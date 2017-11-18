@@ -51,6 +51,8 @@ struct chunk *chunk_create()
 	struct chunk *c;
 
 	c = calloc(1, sizeof(*c));
+	if (!c)
+		return NULL;
 
 	/* TODO can give duplicate ids after some time
 	 * if objects have varying lifetime */
@@ -145,12 +147,22 @@ int chunk_wait_for(struct chunk *c, uint8_t **data)
 		pthread_mutex_unlock(&chunk_mutex);
 		return -EBUSY;
 	}
+
 	c->io = calloc(1, sizeof(struct io));
+	if (!c->io) {
+		pthread_mutex_unlock(&chunk_mutex);
+		return -ENOMEM;
+	}
+
 	pthread_mutex_unlock(&chunk_mutex);
 	c->io->owner = OWNER_NET;
 	pthread_cond_init(&c->io->fs_cond, NULL);
 	pthread_cond_init(&c->io->net_cond, NULL);
-	pthread_mutex_init(&c->io->mutex, NULL);
+	if (pthread_mutex_init(&c->io->mutex, NULL)) {
+		pthread_mutex_unlock(&chunk_mutex);
+		free(c->io);
+		return -errno;
+	}
 
 	pthread_mutex_lock(&c->io->mutex);
 	while (c->io->owner != OWNER_FS) {

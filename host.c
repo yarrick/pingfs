@@ -67,6 +67,9 @@ int host_make_resolvlist(FILE *file, struct gaicb **list[])
 		if (res == EOF) break;
 
 		lg = calloc(1, sizeof(*lg));
+		if (!lg)
+			return 0;
+
 		lg->gaicb.ar_name = strndup(hostname, strlen(hostname));
 		lg->gaicb.ar_request = &addr_request;
 		if (!head) head = lg;
@@ -76,6 +79,9 @@ int host_make_resolvlist(FILE *file, struct gaicb **list[])
 	}
 
 	l = calloc(hosts, sizeof(struct gaicb*));
+	if (!l)
+		return 0;
+
 	lg = head;
 	for (i = 0; i < hosts; i++) {
 		l[i] = &lg->gaicb;
@@ -109,7 +115,12 @@ struct host *host_create(struct gaicb *list[], int listlength)
 		if (gai_error(list[i]) == 0) {
 			struct addrinfo *result = list[i]->ar_result;
 			while (result) {
-				struct host *h = calloc(1, sizeof(struct host));
+				struct host *h;
+
+				h = calloc(1, sizeof(struct host));
+				if (!h)
+					return NULL;
+
 				memcpy(&h->sockaddr, result->ai_addr, result->ai_addrlen);
 				h->sockaddr_len = result->ai_addrlen;
 				if (!hosts)
@@ -122,6 +133,7 @@ struct host *host_create(struct gaicb *list[], int listlength)
 			}
 		}
 	}
+
 	return hosts;
 }
 
@@ -181,8 +193,10 @@ int host_evaluate(struct host **hosts, int length, int timeout)
 	struct evaldata evaldata;
 	uint8_t eval_payload[CHUNK_SIZE];
 
-	evaldata.hosts = calloc(length, sizeof(struct eval_host));
 	evaldata.count = length;
+	evaldata.hosts = calloc(length, sizeof(struct eval_host));
+	if (!evaldata.hosts)
+		return 0;
 
 	for (i = 0; i < sizeof(eval_payload); i++) {
 		eval_payload[i] = i & 0xff;

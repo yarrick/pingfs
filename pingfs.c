@@ -107,6 +107,11 @@ static int resolve_names(struct gaicb **list, int names, struct host **hosts)
 	*hosts = host_create(list, names);
 	host_free_resolvlist(list, names);
 
+	if (*hosts == NULL) {
+		fprintf(stderr, "Failed creating list list, exiting\n");
+		return -1;
+	}
+
 	return hostcount;
 }
 

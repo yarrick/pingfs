@@ -113,10 +113,14 @@ static int fs_mknod(const char *name, mode_t mode, dev_t device)
 		return -EEXIST;
 
 	f = calloc(1, sizeof(struct file));
+	if (!f)
+		return -errno;
+
 	f->name = strdup(name);
 	f->mode = mode;
 	f->next = files;
 	files = f;
+
 	return 0;
 }
 
@@ -343,9 +347,11 @@ static int shrink_file(struct file *f, off_t length)
 		if (length) {
 			uint8_t *cdata;
 			int clen;
+
 			clen = chunk_wait_for(c, &cdata);
 			if (!clen)
 				return -EIO;
+
 			chunk_done(c, cdata, length);
 			c->next_file = NULL;
 			length = 0;

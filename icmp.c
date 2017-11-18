@@ -74,8 +74,11 @@ static uint8_t *icmp_encode(struct icmp_packet *pkt, int *len)
 	struct icmp_rule const *rule = GET_RULE(pkt);
 	uint8_t *data;
 	int pktlen;
+
 	pktlen = ICMP_HDRLEN + pkt->payload_len;
 	data = calloc(1, pktlen);
+	if (!data)
+		return NULL;
 
 	if (pkt->type == ICMP_REQUEST) {
 		data[0] = rule->request_type;
@@ -99,7 +102,11 @@ static uint8_t *icmp_encode(struct icmp_packet *pkt, int *len)
 int icmp_send(int socket, struct icmp_packet *pkt)
 {
 	int len;
-	uint8_t *icmpdata = icmp_encode(pkt, &len);
+	uint8_t *icmpdata;
+
+	icmpdata = icmp_encode(pkt, &len);
+	if (!icmpdata)
+		return 0;
 
 	len = sendto(socket, icmpdata, len, 0, (struct sockaddr *) &pkt->peer, pkt->peer_len);
 
