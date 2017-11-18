@@ -13,8 +13,10 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef __NET_H__
-#define __NET_H__
+
+#ifndef PINGFS_NET_H_
+#define PINGFS_NET_H_
+
 #include "host.h"
 
 #include <stdint.h>
@@ -32,5 +34,5 @@ void net_inc_rx(int packetsize);
 
 void net_start();
 void net_stop();
-#endif
 
+#endif /* PINGFS_NET_H_ */

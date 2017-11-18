@@ -13,8 +13,9 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef __ICMP_H__
-#define __ICMP_H__
+
+#ifndef PINGFS_ICMP_H_
+#define PINGFS_ICMP_H_
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -43,5 +44,4 @@ extern int icmp_parse(struct icmp_packet *pkt, uint8_t *data, int len);
 extern void icmp_dump(struct icmp_packet *pkt);
 extern int icmp_send(int socket, struct icmp_packet *pkt);
 
-#endif
-
+#endif /* PINGFS_ICMP_H_ */
