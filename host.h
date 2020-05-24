@@ -13,8 +13,9 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef __HOST_H__
-#define __HOST_H__
+
+#ifndef PINGFS_HOST_H_
+#define PINGFS_HOST_H_
 
 #include <stdio.h>
 #include <string.h>
@@ -38,4 +39,4 @@ void host_use(struct host* hosts);
 
 struct host *host_get_next();
 
-#endif
+#endif /* PINGFS_HOST_H_ */

@@ -120,7 +120,8 @@ void net_send(struct host *host, uint16_t id, uint16_t seqno, const uint8_t *dat
 
 	if (sock >= 0) {
 		net_inc_tx(pkt.payload_len);
-		icmp_send(sock, &pkt);
+		if (!icmp_send(sock, &pkt))
+			perror("Failed sending data packet");
 	}
 
 }
@@ -239,7 +240,11 @@ static void *status_thread(void *arg)
 
 void net_start()
 {
-	pthread_mutex_init(&netdata.stats_mutex, NULL);
+	if (pthread_mutex_init(&netdata.stats_mutex, NULL)) {
+		perror("Fatal, failed to create a mutex");
+		exit(EXIT_FAILURE);
+	}
+
 	pthread_create(&netdata.responder, NULL, responder_thread, NULL);
 	pthread_create(&netdata.status, NULL, status_thread, NULL);
 }

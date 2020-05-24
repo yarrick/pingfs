@@ -13,8 +13,9 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef __CHUNK_H__
-#define __CHUNK_H__
+#ifndef PINGFS_CHUNK_H_
+#define PINGFS_CHUNK_H_
+
 #include <stdint.h>
 #include <sys/socket.h>
 
@@ -55,4 +56,5 @@ void chunk_reply(void *userdata, struct sockaddr_storage *addr,
 /* Ask for chunk from network, put back result */
 int chunk_wait_for(struct chunk *c, uint8_t **data);
 void chunk_done(struct chunk *c, uint8_t *data, size_t len);
-#endif
+
+#endif /* PINGFS_CHUNK_H_ */

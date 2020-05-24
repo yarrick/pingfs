@@ -13,8 +13,10 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef __FS_H__
-#define __FS_H__
+
+#ifndef PINGFS_FS_H_
+#define PINGFS_FS_H_
+
 #define FUSE_USE_VERSION 26
 
 #include <sys/types.h>
@@ -23,4 +25,4 @@
 
 extern const struct fuse_operations fs_ops;
 
-#endif
+#endif /* PINGFS_FS_H_ */
